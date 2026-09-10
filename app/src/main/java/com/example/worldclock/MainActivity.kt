@@ -66,51 +66,54 @@ data class ClockCity(
     val city: String,
     val country: String,
     val flag: String,
-    val timezone: String,
-    val offset: String
+    val timezone: String
 )
 
 
 @Composable
 fun WorldClockApp() {
 
-    // Digunakan untuk memicu refresh setiap 1 detik
+    // Menyimpan waktu sekarang.
+    // Nilai ini akan berubah setiap 1 detik.
     var currentTimeMillis by remember {
         mutableLongStateOf(System.currentTimeMillis())
     }
 
-    // Update setiap 1 detik
+
+    // Refresh setiap 1 detik
     LaunchedEffect(Unit) {
+
         while (true) {
+
             currentTimeMillis = System.currentTimeMillis()
+
             delay(1000)
         }
     }
 
+
+    // Daftar kota sementara
     val cities = listOf(
 
         ClockCity(
             city = "Tokyo",
             country = "Japan",
             flag = "🇯🇵",
-            timezone = "Asia/Tokyo",
-            offset = "+2h"
+            timezone = "Asia/Tokyo"
         ),
 
         ClockCity(
             city = "London",
             country = "United Kingdom",
             flag = "🇬🇧",
-            timezone = "Europe/London",
-            offset = "-8h"
+            timezone = "Europe/London"
         ),
 
         ClockCity(
             city = "New York",
             country = "United States",
             flag = "🇺🇸",
-            timezone = "America/New_York",
-            offset = "-13h"
+            timezone = "America/New_York"
         )
     )
 
@@ -135,7 +138,9 @@ fun WorldClockApp() {
 
     ) { innerPadding ->
 
+
         LazyColumn(
+
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -144,6 +149,8 @@ fun WorldClockApp() {
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
 
+
+            // HEADER
             item {
 
                 Spacer(
@@ -154,6 +161,7 @@ fun WorldClockApp() {
             }
 
 
+            // YOUR LOCATION
             item {
 
                 Spacer(
@@ -166,6 +174,7 @@ fun WorldClockApp() {
             }
 
 
+            // WORLD CLOCK TITLE
             item {
 
                 Spacer(
@@ -181,6 +190,7 @@ fun WorldClockApp() {
             }
 
 
+            // WORLD CLOCK LIST
             items(cities) { city ->
 
                 CityClockCard(
@@ -190,6 +200,7 @@ fun WorldClockApp() {
             }
 
 
+            // Bottom spacing
             item {
 
                 Spacer(
@@ -205,9 +216,12 @@ fun WorldClockApp() {
 fun TopHeader() {
 
     Row(
+
         modifier = Modifier.fillMaxWidth(),
+
         verticalAlignment = Alignment.CenterVertically
     ) {
+
 
         Column(
             modifier = Modifier.weight(1f)
@@ -220,6 +234,7 @@ fun TopHeader() {
                 color = MaterialTheme.colorScheme.onBackground
             )
 
+
             Text(
                 text = "Your time, anywhere in the world.",
                 fontSize = 14.sp,
@@ -230,7 +245,7 @@ fun TopHeader() {
 
         IconButton(
             onClick = {
-                // Settings akan kita buat nanti
+                // Settings akan dibuat nanti
             }
         ) {
 
@@ -248,10 +263,22 @@ fun YourLocationCard(
     currentTimeMillis: Long
 ) {
 
-    val currentTime = getCurrentTime("Asia/Jakarta")
+    // Ambil waktu Jakarta berdasarkan timestamp
+    val currentTime = getCurrentTime(
+        currentTimeMillis = currentTimeMillis,
+        zoneId = "Asia/Jakarta"
+    )
+
+
+    // Ambil GMT offset secara otomatis
+    val gmtOffset = getGmtOffset(
+        currentTimeMillis = currentTimeMillis,
+        zoneId = "Asia/Jakarta"
+    )
 
 
     Card(
+
         modifier = Modifier.fillMaxWidth(),
 
         shape = RoundedCornerShape(28.dp),
@@ -261,15 +288,19 @@ fun YourLocationCard(
         )
     ) {
 
+
         Column(
             modifier = Modifier.padding(22.dp)
         ) {
+
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
+
                 Box(
+
                     modifier = Modifier
                         .size(42.dp)
                         .clip(CircleShape)
@@ -322,6 +353,7 @@ fun YourLocationCard(
             )
 
 
+            // JAM REALTIME
             Text(
                 text = currentTime,
                 fontSize = 52.sp,
@@ -330,8 +362,9 @@ fun YourLocationCard(
             )
 
 
+            // GMT OTOMATIS
             Text(
-                text = "GMT +7  •  Thursday, September 10",
+                text = "$gmtOffset  •  Jakarta",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onPrimary.copy(
                     alpha = 0.8f
@@ -348,10 +381,22 @@ fun CityClockCard(
     currentTimeMillis: Long
 ) {
 
-    val currentTime = getCurrentTime(city.timezone)
+    // Ambil waktu berdasarkan timezone kota
+    val currentTime = getCurrentTime(
+        currentTimeMillis = currentTimeMillis,
+        zoneId = city.timezone
+    )
+
+
+    // Ambil GMT offset otomatis
+    val gmtOffset = getGmtOffset(
+        currentTimeMillis = currentTimeMillis,
+        zoneId = city.timezone
+    )
 
 
     Card(
+
         modifier = Modifier.fillMaxWidth(),
 
         shape = RoundedCornerShape(24.dp),
@@ -365,7 +410,9 @@ fun CityClockCard(
         )
     ) {
 
+
         Row(
+
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
@@ -373,6 +420,8 @@ fun CityClockCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
+
+            // FLAG
             Text(
                 text = city.flag,
                 fontSize = 32.sp
@@ -384,6 +433,7 @@ fun CityClockCard(
             )
 
 
+            // CITY INFORMATION
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -405,9 +455,11 @@ fun CityClockCard(
             }
 
 
+            // TIME
             Column(
                 horizontalAlignment = Alignment.End
             ) {
+
 
                 Text(
                     text = currentTime,
@@ -417,7 +469,7 @@ fun CityClockCard(
 
 
                 Text(
-                    text = city.offset,
+                    text = gmtOffset,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -432,6 +484,7 @@ fun CityClockCard(
 fun WorldClockPreview() {
 
     WorldClockTheme {
+
         WorldClockApp()
     }
 }
