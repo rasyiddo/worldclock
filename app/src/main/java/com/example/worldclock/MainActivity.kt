@@ -1,8 +1,13 @@
 package com.example.worldclock
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.LocationManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,17 +52,183 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.worldclock.ui.theme.WorldClockTheme
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 
 class MainActivity : ComponentActivity() {
 
+    private var locationName = "Detecting location..."
+    private var countryName = "Please wait..."
+
+    private val locationPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+
+            val fineLocationGranted =
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+
+            val coarseLocationGranted =
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+            if (fineLocationGranted || coarseLocationGranted) {
+                detectLocation()
+            } else {
+                locationName = "Location permission denied"
+                countryName = "Please enable location permission"
+            }
+        }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        requestLocationPermission()
+
         setContent {
+
             WorldClockTheme {
-                WorldClockApp()
+
+                WorldClockApp(
+                    locationName = locationName,
+                    countryName = countryName
+                )
             }
+        }
+    }
+
+
+    private fun requestLocationPermission() {
+
+        val fineGranted =
+            checkSelfPermission(
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+        val coarseGranted =
+            checkSelfPermission(
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+
+        if (fineGranted || coarseGranted) {
+
+            detectLocation()
+
+        } else {
+
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+
+    private fun detectLocation() {
+
+        val locationManager =
+            getSystemService(LOCATION_SERVICE) as LocationManager
+
+
+        val provider = when {
+
+            locationManager.isProviderEnabled(
+                LocationManager.GPS_PROVIDER
+            ) -> LocationManager.GPS_PROVIDER
+
+            locationManager.isProviderEnabled(
+                LocationManager.NETWORK_PROVIDER
+            ) -> LocationManager.NETWORK_PROVIDER
+
+            else -> null
+        }
+
+
+        if (provider == null) {
+
+            locationName = "Location unavailable"
+            countryName = "Please enable GPS"
+
+            return
+        }
+
+
+        try {
+
+            val location = locationManager.getLastKnownLocation(provider)
+
+            if (location != null) {
+
+                val latitude = location.latitude
+                val longitude = location.longitude
+
+                getAddressFromLocation(
+                    latitude,
+                    longitude
+                )
+
+            } else {
+
+                locationName = "Location unavailable"
+                countryName = "Try again with GPS enabled"
+            }
+
+        } catch (e: SecurityException) {
+
+            locationName = "Location permission error"
+            countryName = "Please check permissions"
+        }
+    }
+
+
+    private fun getAddressFromLocation(
+        latitude: Double,
+        longitude: Double
+    ) {
+
+        try {
+
+            val geocoder = Geocoder(
+                this,
+                Locale.getDefault()
+            )
+
+            @Suppress("DEPRECATION")
+            val addresses = geocoder.getFromLocation(
+                latitude,
+                longitude,
+                1
+            )
+
+
+            if (!addresses.isNullOrEmpty()) {
+
+                val address = addresses[0]
+
+                locationName =
+                    address.locality
+                        ?: address.subAdminArea
+                                ?: address.adminArea
+                                ?: "Unknown location"
+
+
+                countryName =
+                    address.countryName
+                        ?: "Unknown country"
+
+            } else {
+
+                locationName = "Unknown location"
+                countryName = "Unknown country"
+            }
+
+        } catch (e: Exception) {
+
+            locationName = "Unable to detect"
+            countryName = "Please try again"
         }
     }
 }
@@ -71,28 +243,31 @@ data class ClockCity(
 
 
 @Composable
-fun WorldClockApp() {
+fun WorldClockApp(
+    locationName: String,
+    countryName: String
+) {
 
-    // Menyimpan waktu sekarang.
-    // Nilai ini akan berubah setiap 1 detik.
     var currentTimeMillis by remember {
-        mutableLongStateOf(System.currentTimeMillis())
+
+        mutableLongStateOf(
+            System.currentTimeMillis()
+        )
     }
 
 
-    // Refresh setiap 1 detik
     LaunchedEffect(Unit) {
 
         while (true) {
 
-            currentTimeMillis = System.currentTimeMillis()
+            currentTimeMillis =
+                System.currentTimeMillis()
 
             delay(1000)
         }
     }
 
 
-    // Daftar kota sementara
     val cities = listOf(
 
         ClockCity(
@@ -123,9 +298,11 @@ fun WorldClockApp() {
         floatingActionButton = {
 
             FloatingActionButton(
+
                 onClick = {
-                    // Akan digunakan nanti untuk Add City
+                    // Add City akan kita buat nanti
                 },
+
                 shape = CircleShape
             ) {
 
@@ -146,11 +323,11 @@ fun WorldClockApp() {
                 .padding(innerPadding)
                 .padding(horizontal = 20.dp),
 
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement =
+                Arrangement.spacedBy(14.dp)
         ) {
 
 
-            // HEADER
             item {
 
                 Spacer(
@@ -161,7 +338,6 @@ fun WorldClockApp() {
             }
 
 
-            // YOUR LOCATION
             item {
 
                 Spacer(
@@ -169,12 +345,13 @@ fun WorldClockApp() {
                 )
 
                 YourLocationCard(
-                    currentTimeMillis = currentTimeMillis
+                    currentTimeMillis = currentTimeMillis,
+                    locationName = locationName,
+                    countryName = countryName
                 )
             }
 
 
-            // WORLD CLOCK TITLE
             item {
 
                 Spacer(
@@ -190,7 +367,6 @@ fun WorldClockApp() {
             }
 
 
-            // WORLD CLOCK LIST
             items(cities) { city ->
 
                 CityClockCard(
@@ -200,7 +376,6 @@ fun WorldClockApp() {
             }
 
 
-            // Bottom spacing
             item {
 
                 Spacer(
@@ -219,7 +394,8 @@ fun TopHeader() {
 
         modifier = Modifier.fillMaxWidth(),
 
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment =
+            Alignment.CenterVertically
     ) {
 
 
@@ -260,17 +436,17 @@ fun TopHeader() {
 
 @Composable
 fun YourLocationCard(
-    currentTimeMillis: Long
+    currentTimeMillis: Long,
+    locationName: String,
+    countryName: String
 ) {
 
-    // Ambil waktu Jakarta berdasarkan timestamp
     val currentTime = getCurrentTime(
         currentTimeMillis = currentTimeMillis,
         zoneId = "Asia/Jakarta"
     )
 
 
-    // Ambil GMT offset secara otomatis
     val gmtOffset = getGmtOffset(
         currentTimeMillis = currentTimeMillis,
         zoneId = "Asia/Jakarta"
@@ -284,7 +460,8 @@ fun YourLocationCard(
         shape = RoundedCornerShape(28.dp),
 
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
+            containerColor =
+                MaterialTheme.colorScheme.primary
         )
     ) {
 
@@ -295,7 +472,8 @@ fun YourLocationCard(
 
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment =
+                    Alignment.CenterVertically
             ) {
 
 
@@ -310,13 +488,19 @@ fun YourLocationCard(
                             )
                         ),
 
-                    contentAlignment = Alignment.Center
+                    contentAlignment =
+                        Alignment.Center
                 ) {
 
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Location",
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        imageVector =
+                            Icons.Default.LocationOn,
+
+                        contentDescription =
+                            "Location",
+
+                        tint =
+                            MaterialTheme.colorScheme.onPrimary
                     )
                 }
 
@@ -332,17 +516,22 @@ fun YourLocationCard(
                         text = "YOUR LOCATION",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(
-                            alpha = 0.75f
-                        )
+                        color =
+                            MaterialTheme.colorScheme.onPrimary.copy(
+                                alpha = 0.75f
+                            )
                     )
 
 
                     Text(
-                        text = "Jakarta, Indonesia",
+                        text = "$locationName, $countryName",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color =
+                            MaterialTheme.colorScheme.onPrimary,
+                        maxLines = 1,
+                        overflow =
+                            TextOverflow.Ellipsis
                     )
                 }
             }
@@ -353,22 +542,22 @@ fun YourLocationCard(
             )
 
 
-            // JAM REALTIME
             Text(
                 text = currentTime,
                 fontSize = 52.sp,
                 fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.onPrimary
+                color =
+                    MaterialTheme.colorScheme.onPrimary
             )
 
 
-            // GMT OTOMATIS
             Text(
-                text = "$gmtOffset  •  Jakarta",
+                text = "$gmtOffset  •  Local time",
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onPrimary.copy(
-                    alpha = 0.8f
-                )
+                color =
+                    MaterialTheme.colorScheme.onPrimary.copy(
+                        alpha = 0.8f
+                    )
             )
         }
     }
@@ -381,14 +570,12 @@ fun CityClockCard(
     currentTimeMillis: Long
 ) {
 
-    // Ambil waktu berdasarkan timezone kota
     val currentTime = getCurrentTime(
         currentTimeMillis = currentTimeMillis,
         zoneId = city.timezone
     )
 
 
-    // Ambil GMT offset otomatis
     val gmtOffset = getGmtOffset(
         currentTimeMillis = currentTimeMillis,
         zoneId = city.timezone
@@ -402,12 +589,14 @@ fun CityClockCard(
         shape = RoundedCornerShape(24.dp),
 
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor =
+                MaterialTheme.colorScheme.surface
         ),
 
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp
-        )
+        elevation =
+            CardDefaults.cardElevation(
+                defaultElevation = 2.dp
+            )
     ) {
 
 
@@ -417,11 +606,11 @@ fun CityClockCard(
                 .fillMaxWidth()
                 .padding(20.dp),
 
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
 
 
-            // FLAG
             Text(
                 text = city.flag,
                 fontSize = 32.sp
@@ -433,7 +622,6 @@ fun CityClockCard(
             )
 
 
-            // CITY INFORMATION
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -448,16 +636,18 @@ fun CityClockCard(
                 Text(
                     text = city.country,
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow =
+                        TextOverflow.Ellipsis
                 )
             }
 
 
-            // TIME
             Column(
-                horizontalAlignment = Alignment.End
+                horizontalAlignment =
+                    Alignment.End
             ) {
 
 
@@ -471,7 +661,8 @@ fun CityClockCard(
                 Text(
                     text = gmtOffset,
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary
+                    color =
+                        MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -485,6 +676,9 @@ fun WorldClockPreview() {
 
     WorldClockTheme {
 
-        WorldClockApp()
+        WorldClockApp(
+            locationName = "Jakarta",
+            countryName = "Indonesia"
+        )
     }
 }
