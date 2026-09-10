@@ -20,8 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -29,19 +29,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.worldclock.ui.theme.WorldClockTheme
+import kotlinx.coroutines.delay
+
 
 class MainActivity : ComponentActivity() {
 
@@ -56,55 +61,78 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 data class ClockCity(
     val city: String,
     val country: String,
     val flag: String,
-    val time: String,
+    val timezone: String,
     val offset: String
 )
+
 
 @Composable
 fun WorldClockApp() {
 
+    // Digunakan untuk memicu refresh setiap 1 detik
+    var currentTimeMillis by remember {
+        mutableLongStateOf(System.currentTimeMillis())
+    }
+
+    // Update setiap 1 detik
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTimeMillis = System.currentTimeMillis()
+            delay(1000)
+        }
+    }
+
     val cities = listOf(
+
         ClockCity(
             city = "Tokyo",
             country = "Japan",
             flag = "🇯🇵",
-            time = "18:14",
+            timezone = "Asia/Tokyo",
             offset = "+2h"
         ),
+
         ClockCity(
             city = "London",
             country = "United Kingdom",
             flag = "🇬🇧",
-            time = "10:14",
-            offset = "-6h"
+            timezone = "Europe/London",
+            offset = "-8h"
         ),
+
         ClockCity(
             city = "New York",
             country = "United States",
             flag = "🇺🇸",
-            time = "05:14",
-            offset = "-11h"
+            timezone = "America/New_York",
+            offset = "-13h"
         )
     )
 
+
     Scaffold(
+
         floatingActionButton = {
+
             FloatingActionButton(
                 onClick = {
-                    // Akan kita gunakan nanti untuk Add City
+                    // Akan digunakan nanti untuk Add City
                 },
                 shape = CircleShape
             ) {
+
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add City"
                 )
             }
         }
+
     ) { innerPadding ->
 
         LazyColumn(
@@ -112,23 +140,37 @@ fun WorldClockApp() {
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 20.dp),
+
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
 
             item {
-                Spacer(modifier = Modifier.height(12.dp))
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
 
                 TopHeader()
             }
 
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
 
-                YourLocationCard()
+            item {
+
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
+
+                YourLocationCard(
+                    currentTimeMillis = currentTimeMillis
+                )
             }
 
+
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
 
                 Text(
                     text = "World clocks",
@@ -138,16 +180,26 @@ fun WorldClockApp() {
                 )
             }
 
+
             items(cities) { city ->
-                CityClockCard(city)
+
+                CityClockCard(
+                    city = city,
+                    currentTimeMillis = currentTimeMillis
+                )
             }
 
+
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+
+                Spacer(
+                    modifier = Modifier.height(80.dp)
+                )
             }
         }
     }
 }
+
 
 @Composable
 fun TopHeader() {
@@ -160,6 +212,7 @@ fun TopHeader() {
         Column(
             modifier = Modifier.weight(1f)
         ) {
+
             Text(
                 text = "WorldClock",
                 fontSize = 28.sp,
@@ -174,11 +227,13 @@ fun TopHeader() {
             )
         }
 
+
         IconButton(
             onClick = {
                 // Settings akan kita buat nanti
             }
         ) {
+
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Settings"
@@ -187,12 +242,20 @@ fun TopHeader() {
     }
 }
 
+
 @Composable
-fun YourLocationCard() {
+fun YourLocationCard(
+    currentTimeMillis: Long
+) {
+
+    val currentTime = getCurrentTime("Asia/Jakarta")
+
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+
         shape = RoundedCornerShape(28.dp),
+
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primary
         )
@@ -211,10 +274,14 @@ fun YourLocationCard() {
                         .size(42.dp)
                         .clip(CircleShape)
                         .background(
-                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f)
+                            MaterialTheme.colorScheme.onPrimary.copy(
+                                alpha = 0.15f
+                            )
                         ),
+
                     contentAlignment = Alignment.Center
                 ) {
+
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = "Location",
@@ -222,9 +289,14 @@ fun YourLocationCard() {
                     )
                 }
 
-                Spacer(modifier = Modifier.size(12.dp))
+
+                Spacer(
+                    modifier = Modifier.size(12.dp)
+                )
+
 
                 Column {
+
                     Text(
                         text = "YOUR LOCATION",
                         fontSize = 12.sp,
@@ -233,6 +305,7 @@ fun YourLocationCard() {
                             alpha = 0.75f
                         )
                     )
+
 
                     Text(
                         text = "Jakarta, Indonesia",
@@ -243,14 +316,19 @@ fun YourLocationCard() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
+
+            Spacer(
+                modifier = Modifier.height(22.dp)
+            )
+
 
             Text(
-                text = "16:14",
+                text = currentTime,
                 fontSize = 52.sp,
                 fontWeight = FontWeight.Light,
                 color = MaterialTheme.colorScheme.onPrimary
             )
+
 
             Text(
                 text = "GMT +7  •  Thursday, September 10",
@@ -263,15 +341,25 @@ fun YourLocationCard() {
     }
 }
 
+
 @Composable
-fun CityClockCard(city: ClockCity) {
+fun CityClockCard(
+    city: ClockCity,
+    currentTimeMillis: Long
+) {
+
+    val currentTime = getCurrentTime(city.timezone)
+
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+
         shape = RoundedCornerShape(24.dp),
+
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
+
         elevation = CardDefaults.cardElevation(
             defaultElevation = 2.dp
         )
@@ -281,6 +369,7 @@ fun CityClockCard(city: ClockCity) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
+
             verticalAlignment = Alignment.CenterVertically
         ) {
 
@@ -289,7 +378,11 @@ fun CityClockCard(city: ClockCity) {
                 fontSize = 32.sp
             )
 
-            Spacer(modifier = Modifier.size(14.dp))
+
+            Spacer(
+                modifier = Modifier.size(14.dp)
+            )
+
 
             Column(
                 modifier = Modifier.weight(1f)
@@ -301,6 +394,7 @@ fun CityClockCard(city: ClockCity) {
                     fontWeight = FontWeight.SemiBold
                 )
 
+
                 Text(
                     text = city.country,
                     fontSize = 13.sp,
@@ -310,15 +404,17 @@ fun CityClockCard(city: ClockCity) {
                 )
             }
 
+
             Column(
                 horizontalAlignment = Alignment.End
             ) {
 
                 Text(
-                    text = city.time,
+                    text = currentTime,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Medium
                 )
+
 
                 Text(
                     text = city.offset,
@@ -330,9 +426,11 @@ fun CityClockCard(city: ClockCity) {
     }
 }
 
+
 @Preview(showBackground = true)
 @Composable
 fun WorldClockPreview() {
+
     WorldClockTheme {
         WorldClockApp()
     }
