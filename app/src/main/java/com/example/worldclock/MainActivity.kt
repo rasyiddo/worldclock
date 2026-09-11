@@ -8,7 +8,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,13 +20,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -35,6 +31,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -55,10 +53,7 @@ import com.example.worldclock.ui.theme.WorldClockTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
 import java.util.TimeZone
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
+
 
 class MainActivity : ComponentActivity() {
 
@@ -90,8 +85,11 @@ class MainActivity : ComponentActivity() {
                 ] == true
 
             if (fineGranted || coarseGranted) {
+
                 detectLocation()
+
             } else {
+
                 locationName =
                     "Location permission denied"
 
@@ -100,17 +98,21 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
+
         super.onCreate(savedInstanceState)
 
         requestLocationPermission()
 
         setContent {
+
             WorldClockTheme {
 
                 WorldClockApp(
+
                     locationName =
                         locationName,
 
@@ -128,6 +130,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun requestLocationPermission() {
 
         val fineGranted =
@@ -140,6 +143,7 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 
+
         if (fineGranted || coarseGranted) {
 
             detectLocation()
@@ -147,13 +151,17 @@ class MainActivity : ComponentActivity() {
         } else {
 
             locationPermissionLauncher.launch(
+
                 arrayOf(
+
                     Manifest.permission.ACCESS_FINE_LOCATION,
+
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
         }
     }
+
 
     private fun detectLocation() {
 
@@ -163,29 +171,29 @@ class MainActivity : ComponentActivity() {
         countryName =
             "Please wait..."
 
+
         val locationManager =
             getSystemService(
                 LOCATION_SERVICE
             ) as LocationManager
 
+
         val provider = when {
 
             locationManager.isProviderEnabled(
                 LocationManager.GPS_PROVIDER
-            ) -> {
+            ) ->
                 LocationManager.GPS_PROVIDER
-            }
 
             locationManager.isProviderEnabled(
                 LocationManager.NETWORK_PROVIDER
-            ) -> {
+            ) ->
                 LocationManager.NETWORK_PROVIDER
-            }
 
-            else -> {
+            else ->
                 null
-            }
         }
+
 
         if (provider == null) {
 
@@ -198,12 +206,14 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+
         try {
 
             val location =
                 locationManager.getLastKnownLocation(
                     provider
                 )
+
 
             if (location != null) {
 
@@ -213,8 +223,10 @@ class MainActivity : ComponentActivity() {
                 val longitude =
                     location.longitude
 
+
                 detectedTimezone =
                     TimeZone.getDefault().id
+
 
                 getAddressFromLocation(
                     latitude,
@@ -240,6 +252,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
     private fun getAddressFromLocation(
         latitude: Double,
         longitude: Double
@@ -253,7 +266,9 @@ class MainActivity : ComponentActivity() {
                     Locale.getDefault()
                 )
 
+
             @Suppress("DEPRECATION")
+
             val addresses =
                 geocoder.getFromLocation(
                     latitude,
@@ -261,16 +276,19 @@ class MainActivity : ComponentActivity() {
                     1
                 )
 
+
             if (!addresses.isNullOrEmpty()) {
 
                 val address =
                     addresses[0]
+
 
                 locationName =
                     address.locality
                         ?: address.subAdminArea
                                 ?: address.adminArea
                                 ?: "Unknown location"
+
 
                 countryName =
                     address.countryName
@@ -296,12 +314,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-data class ClockCity(
-    val city: String,
-    val country: String,
-    val flag: String,
-    val timezone: String
-)
+
+/*
+ * ============================================================
+ * MAIN APP
+ * ============================================================
+ */
 
 @Composable
 fun WorldClockApp(
@@ -311,6 +329,83 @@ fun WorldClockApp(
     onRefreshLocation: () -> Unit
 ) {
 
+    /*
+     * false = Home
+     * true  = Search City
+     */
+
+    var showSearchScreen by remember {
+        mutableStateOf(false)
+    }
+
+
+    if (showSearchScreen) {
+
+        SearchCityScreen(
+
+            onBack = {
+
+                showSearchScreen = false
+            },
+
+            onCitySelected = { city ->
+
+                /*
+                 * Step 9 nanti:
+                 *
+                 * city akan dimasukkan
+                 * ke World Clock.
+                 *
+                 * Untuk sekarang kembali
+                 * ke Home dulu.
+                 */
+
+                showSearchScreen = false
+            }
+        )
+
+    } else {
+
+        WorldClockHomeScreen(
+
+            locationName =
+                locationName,
+
+            countryName =
+                countryName,
+
+            timezone =
+                timezone,
+
+            onRefreshLocation = {
+
+                onRefreshLocation()
+            },
+
+            onAddCity = {
+
+                showSearchScreen = true
+            }
+        )
+    }
+}
+
+
+/*
+ * ============================================================
+ * HOME SCREEN
+ * ============================================================
+ */
+
+@Composable
+fun WorldClockHomeScreen(
+    locationName: String,
+    countryName: String,
+    timezone: String,
+    onRefreshLocation: () -> Unit,
+    onAddCity: () -> Unit
+) {
+
     var currentTimeMillis by remember {
 
         mutableLongStateOf(
@@ -318,9 +413,16 @@ fun WorldClockApp(
         )
     }
 
+
     var isAnalog by remember {
+
         mutableStateOf(false)
     }
+
+
+    /*
+     * REAL-TIME CLOCK
+     */
 
     LaunchedEffect(Unit) {
 
@@ -332,6 +434,11 @@ fun WorldClockApp(
             delay(1000)
         }
     }
+
+
+    /*
+     * DEFAULT WORLD CLOCKS
+     */
 
     val cities = listOf(
 
@@ -357,28 +464,33 @@ fun WorldClockApp(
         )
     )
 
+
     Scaffold(
 
         floatingActionButton = {
 
             FloatingActionButton(
+
                 onClick = {
-                    // Add City nanti
-                },
-                shape = CircleShape
+
+                    onAddCity()
+                }
+
             ) {
 
                 Icon(
+
                     imageVector =
                         Icons.Default.Add,
 
                     contentDescription =
-                        "Add City"
+                        "Add city"
                 )
             }
         }
 
     ) { innerPadding ->
+
 
         LazyColumn(
 
@@ -386,35 +498,67 @@ fun WorldClockApp(
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(
-                        horizontal = 20.dp
-                    ),
+                    .padding(horizontal = 16.dp),
 
             verticalArrangement =
-                Arrangement.spacedBy(14.dp)
+                Arrangement.spacedBy(16.dp)
         ) {
+
+
+            /*
+             * HEADER
+             */
 
             item {
 
                 Spacer(
                     modifier =
-                        Modifier.height(12.dp)
+                        Modifier.height(8.dp)
                 )
 
-                TopHeader()
-            }
 
-            item {
+                Text(
+
+                    text =
+                        "WorldClock",
+
+                    fontSize =
+                        32.sp,
+
+                    fontWeight =
+                        FontWeight.Bold
+                )
+
 
                 Spacer(
                     modifier =
                         Modifier.height(4.dp)
                 )
 
-                YourLocationCard(
 
-                    currentTimeMillis =
-                        currentTimeMillis,
+                Text(
+
+                    text =
+                        "Track time around the world",
+
+                    fontSize =
+                        14.sp,
+
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant
+                )
+            }
+
+
+            /*
+             * YOUR LOCATION
+             */
+
+            item {
+
+                YourLocationCard(
 
                     locationName =
                         locationName,
@@ -425,10 +569,18 @@ fun WorldClockApp(
                     timezone =
                         timezone,
 
-                    onRefreshLocation =
-                        onRefreshLocation
+                    onRefresh =
+                        onRefreshLocation,
+
+                    currentTimeMillis =
+                        currentTimeMillis
                 )
             }
+
+
+            /*
+             * CLOCK STYLE
+             */
 
             item {
 
@@ -438,39 +590,48 @@ fun WorldClockApp(
                         isAnalog,
 
                     onModeChange = {
+
                         isAnalog = it
                     }
                 )
             }
 
+
+            /*
+             * WORLD CLOCK TITLE
+             */
+
             item {
 
-                Spacer(
-                    modifier =
-                        Modifier.height(8.dp)
-                )
-
                 Text(
-                    text = "World clocks",
+
+                    text =
+                        "World clocks",
 
                     fontSize =
                         20.sp,
 
                     fontWeight =
-                        FontWeight.Bold,
-
-                    color =
-                        MaterialTheme
-                            .colorScheme
-                            .onBackground
+                        FontWeight.SemiBold
                 )
             }
 
-            items(cities) { city ->
+
+            /*
+             * CITY CARDS
+             */
+
+            items(
+
+                items =
+                    cities
+
+            ) { city ->
 
                 CityClockCard(
 
-                    city = city,
+                    city =
+                        city,
 
                     currentTimeMillis =
                         currentTimeMillis,
@@ -479,6 +640,7 @@ fun WorldClockApp(
                         isAnalog
                 )
             }
+
 
             item {
 
@@ -491,81 +653,20 @@ fun WorldClockApp(
     }
 }
 
-@Composable
-fun TopHeader() {
 
-    Row(
-
-        modifier =
-            Modifier.fillMaxWidth(),
-
-        verticalAlignment =
-            Alignment.CenterVertically
-    ) {
-
-        Column(
-            modifier =
-                Modifier.weight(1f)
-        ) {
-
-            Text(
-                text = "WorldClock",
-
-                fontSize =
-                    28.sp,
-
-                fontWeight =
-                    FontWeight.Bold,
-
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onBackground
-            )
-
-            Text(
-                text =
-                    "Your time, anywhere in the world.",
-
-                fontSize =
-                    14.sp,
-
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onSurfaceVariant
-            )
-        }
-
-        IconButton(
-            onClick = {
-                // Settings nanti
-            }
-        ) {
-
-            Icon(
-                imageVector =
-                    Icons.Default.Settings,
-
-                contentDescription =
-                    "Settings"
-            )
-        }
-    }
-}
+/*
+ * ============================================================
+ * YOUR LOCATION CARD
+ * ============================================================
+ */
 
 @Composable
 fun YourLocationCard(
-
-    currentTimeMillis: Long,
-
     locationName: String,
-
     countryName: String,
-
     timezone: String,
-
-    onRefreshLocation: () -> Unit
+    onRefresh: () -> Unit,
+    currentTimeMillis: Long
 ) {
 
     val currentTime =
@@ -578,6 +679,7 @@ fun YourLocationCard(
                 timezone
         )
 
+
     val gmtOffset =
         getGmtOffset(
 
@@ -588,13 +690,25 @@ fun YourLocationCard(
                 timezone
         )
 
+
+    val isDay =
+        isDayTime(
+
+            currentTimeMillis =
+                currentTimeMillis,
+
+            timezone =
+                timezone
+        )
+
+
     Card(
 
         modifier =
             Modifier.fillMaxWidth(),
 
         shape =
-            RoundedCornerShape(28.dp),
+            MaterialTheme.shapes.extraLarge,
 
         colors =
             CardDefaults.cardColors(
@@ -602,63 +716,52 @@ fun YourLocationCard(
                 containerColor =
                     MaterialTheme
                         .colorScheme
-                        .primary
+                        .primaryContainer
             )
     ) {
 
         Column(
 
             modifier =
-                Modifier.padding(22.dp)
+                Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
         ) {
 
+
             Row(
+
+                modifier =
+                    Modifier.fillMaxWidth(),
 
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
 
-                Box(
 
-                    modifier =
-                        Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(
+                Icon(
 
-                                MaterialTheme
-                                    .colorScheme
-                                    .onPrimary
-                                    .copy(
-                                        alpha = 0.15f
-                                    )
-                            ),
+                    imageVector =
+                        Icons.Default.LocationOn,
 
-                    contentAlignment =
-                        Alignment.Center
-                ) {
+                    contentDescription =
+                        "Location",
 
-                    Icon(
+                    tint =
+                        MaterialTheme
+                            .colorScheme
+                            .primary
+                )
 
-                        imageVector =
-                            Icons.Default.LocationOn,
-
-                        contentDescription =
-                            "Location",
-
-                        tint =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimary
-                    )
-                }
 
                 Spacer(
                     modifier =
-                        Modifier.size(12.dp)
+                        Modifier.size(10.dp)
                 )
 
+
                 Column(
+
                     modifier =
                         Modifier.weight(1f)
                 ) {
@@ -666,49 +769,54 @@ fun YourLocationCard(
                     Text(
 
                         text =
-                            "YOUR LOCATION",
+                            "Your Location",
 
                         fontSize =
-                            12.sp,
-
-                        fontWeight =
-                            FontWeight.Bold,
+                            13.sp,
 
                         color =
                             MaterialTheme
                                 .colorScheme
-                                .onPrimary
-                                .copy(
-                                    alpha = 0.75f
-                                )
+                                .onPrimaryContainer
                     )
+
 
                     Text(
 
                         text =
-                            "$locationName, $countryName",
+                            locationName,
 
                         fontSize =
-                            18.sp,
+                            20.sp,
 
                         fontWeight =
-                            FontWeight.SemiBold,
+                            FontWeight.Bold
+                    )
+
+
+                    Text(
+
+                        text =
+                            countryName,
+
+                        fontSize =
+                            13.sp,
 
                         color =
                             MaterialTheme
                                 .colorScheme
-                                .onPrimary,
-
-                        maxLines = 1,
-
-                        overflow =
-                            TextOverflow.Ellipsis
+                                .onPrimaryContainer
                     )
                 }
 
+
                 IconButton(
-                    onClick =
-                        onRefreshLocation
+
+                    onClick = {
+
+                        onRefresh()
+                    }
+
                 ) {
 
                     Icon(
@@ -717,57 +825,110 @@ fun YourLocationCard(
                             Icons.Default.Refresh,
 
                         contentDescription =
-                            "Refresh location",
-
-                        tint =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimary
+                            "Refresh location"
                     )
                 }
             }
 
+
             Spacer(
                 modifier =
-                    Modifier.height(22.dp)
+                    Modifier.height(16.dp)
             )
 
-            Text(
 
-                text =
-                    currentTime,
+            Row(
 
-                fontSize =
-                    52.sp,
+                modifier =
+                    Modifier.fillMaxWidth(),
 
-                fontWeight =
-                    FontWeight.Light,
+                verticalAlignment =
+                    Alignment.Bottom
+            ) {
 
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onPrimary
-            )
 
-            Text(
+                Column(
 
-                text =
-                    "$gmtOffset  •  $timezone",
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
 
-                fontSize =
-                    13.sp,
+                    Text(
 
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onPrimary
-                        .copy(
-                            alpha = 0.8f
-                        )
-            )
+                        text =
+                            currentTime,
+
+                        fontSize =
+                            36.sp,
+
+                        fontWeight =
+                            FontWeight.Light
+                    )
+
+
+                    Text(
+
+                        text =
+                            timezone,
+
+                        fontSize =
+                            12.sp,
+
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimaryContainer
+                    )
+                }
+
+
+                Column(
+
+                    horizontalAlignment =
+                        Alignment.End
+                ) {
+
+                    Text(
+
+                        text =
+                            if (isDay)
+                                "☀️ Day"
+                            else
+                                "🌙 Night",
+
+                        fontSize =
+                            13.sp,
+
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+
+
+                    Text(
+
+                        text =
+                            gmtOffset,
+
+                        fontSize =
+                            12.sp,
+
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .primary
+                    )
+                }
+            }
         }
     }
 }
+
+
+/*
+ * ============================================================
+ * DIGITAL / ANALOG SELECTOR
+ * ============================================================
+ */
 
 @Composable
 fun ClockDisplaySelector(
@@ -776,30 +937,42 @@ fun ClockDisplaySelector(
 ) {
 
     Column(
+
         modifier =
             Modifier.fillMaxWidth()
     ) {
 
+
         Text(
-            text = "Clock style",
-            fontSize = 14.sp,
+
+            text =
+                "Clock style",
+
+            fontSize =
+                14.sp,
+
             fontWeight =
                 FontWeight.SemiBold,
+
             color =
                 MaterialTheme
                     .colorScheme
                     .onBackground
         )
 
+
         Spacer(
             modifier =
                 Modifier.height(8.dp)
         )
 
+
         SingleChoiceSegmentedButtonRow(
+
             modifier =
                 Modifier.fillMaxWidth()
         ) {
+
 
             SegmentedButton(
 
@@ -807,15 +980,19 @@ fun ClockDisplaySelector(
                     !isAnalog,
 
                 onClick = {
+
                     onModeChange(false)
                 },
 
                 shape =
                     SegmentedButtonDefaults
                         .itemShape(
+
                             index = 0,
+
                             count = 2
                         )
+
             ) {
 
                 Text(
@@ -823,21 +1000,26 @@ fun ClockDisplaySelector(
                 )
             }
 
+
             SegmentedButton(
 
                 selected =
                     isAnalog,
 
                 onClick = {
+
                     onModeChange(true)
                 },
 
                 shape =
                     SegmentedButtonDefaults
                         .itemShape(
+
                             index = 1,
+
                             count = 2
                         )
+
             ) {
 
                 Text(
@@ -848,13 +1030,17 @@ fun ClockDisplaySelector(
     }
 }
 
+
+/*
+ * ============================================================
+ * CITY CLOCK CARD
+ * ============================================================
+ */
+
 @Composable
 fun CityClockCard(
-
     city: ClockCity,
-
     currentTimeMillis: Long,
-
     isAnalog: Boolean
 ) {
 
@@ -868,6 +1054,7 @@ fun CityClockCard(
                 city.timezone
         )
 
+
     val gmtOffset =
         getGmtOffset(
 
@@ -877,6 +1064,7 @@ fun CityClockCard(
             zoneId =
                 city.timezone
         )
+
 
     val isDay =
         isDayTime(
@@ -888,13 +1076,14 @@ fun CityClockCard(
                 city.timezone
         )
 
+
     Card(
 
         modifier =
             Modifier.fillMaxWidth(),
 
         shape =
-            RoundedCornerShape(24.dp),
+            MaterialTheme.shapes.extraLarge,
 
         colors =
             CardDefaults.cardColors(
@@ -907,9 +1096,12 @@ fun CityClockCard(
 
         elevation =
             CardDefaults.cardElevation(
-                defaultElevation = 2.dp
+
+                defaultElevation =
+                    2.dp
             )
     ) {
+
 
         Column(
 
@@ -918,6 +1110,7 @@ fun CityClockCard(
                     .fillMaxWidth()
                     .padding(20.dp)
         ) {
+
 
             Row(
 
@@ -928,6 +1121,7 @@ fun CityClockCard(
                     Alignment.CenterVertically
             ) {
 
+
                 Text(
 
                     text =
@@ -937,10 +1131,12 @@ fun CityClockCard(
                         32.sp
                 )
 
+
                 Spacer(
                     modifier =
                         Modifier.size(14.dp)
                 )
+
 
                 Column(
 
@@ -959,6 +1155,7 @@ fun CityClockCard(
                         fontWeight =
                             FontWeight.SemiBold
                     )
+
 
                     Text(
 
@@ -981,6 +1178,7 @@ fun CityClockCard(
                     )
                 }
 
+
                 Column(
 
                     horizontalAlignment =
@@ -990,11 +1188,10 @@ fun CityClockCard(
                     Text(
 
                         text =
-                            if (isDay) {
+                            if (isDay)
                                 "☀️ Day"
-                            } else {
-                                "🌙 Night"
-                            },
+                            else
+                                "🌙 Night",
 
                         fontSize =
                             13.sp,
@@ -1002,6 +1199,7 @@ fun CityClockCard(
                         fontWeight =
                             FontWeight.Medium
                     )
+
 
                     Text(
 
@@ -1019,10 +1217,12 @@ fun CityClockCard(
                 }
             }
 
+
             Spacer(
                 modifier =
                     Modifier.height(18.dp)
             )
+
 
             Box(
 
@@ -1032,6 +1232,7 @@ fun CityClockCard(
                 contentAlignment =
                     Alignment.Center
             ) {
+
 
                 if (isAnalog) {
 
@@ -1060,30 +1261,36 @@ fun CityClockCard(
                 }
             }
 
+
             Spacer(
                 modifier =
                     Modifier.height(14.dp)
             )
 
-            Text(
 
-                text =
-                    currentTime,
+            if (isAnalog) {
 
-                modifier =
-                    Modifier.fillMaxWidth(),
+                Text(
 
-                fontSize =
-                    16.sp,
+                    text =
+                        currentTime,
 
-                fontWeight =
-                    FontWeight.Medium,
+                    modifier =
+                        Modifier.fillMaxWidth(),
 
-                color =
-                    MaterialTheme
-                        .colorScheme
-                        .onSurfaceVariant
-            )
+                    fontSize =
+                        16.sp,
+
+                    fontWeight =
+                        FontWeight.Medium,
+
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant
+                )
+            }
+
 
             Text(
 
@@ -1102,7 +1309,16 @@ fun CityClockCard(
     }
 }
 
-@Preview(showBackground = true)
+
+/*
+ * ============================================================
+ * PREVIEW
+ * ============================================================
+ */
+
+@Preview(
+    showBackground = true
+)
 @Composable
 fun WorldClockPreview() {
 
