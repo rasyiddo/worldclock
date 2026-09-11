@@ -53,27 +53,38 @@ import androidx.compose.ui.unit.sp
 import com.example.worldclock.ui.theme.WorldClockTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
+import java.util.TimeZone
 
 
 class MainActivity : ComponentActivity() {
 
     private var locationName = "Detecting location..."
     private var countryName = "Please wait..."
+    private var detectedTimezone = TimeZone.getDefault().id
+
 
     private val locationPermissionLauncher =
         registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
 
-            val fineLocationGranted =
-                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val fineGranted =
+                permissions[
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ] == true
 
-            val coarseLocationGranted =
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            val coarseGranted =
+                permissions[
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ] == true
 
-            if (fineLocationGranted || coarseLocationGranted) {
+
+            if (fineGranted || coarseGranted) {
+
                 detectLocation()
+
             } else {
+
                 locationName = "Location permission denied"
                 countryName = "Please enable location permission"
             }
@@ -85,13 +96,15 @@ class MainActivity : ComponentActivity() {
 
         requestLocationPermission()
 
+
         setContent {
 
             WorldClockTheme {
 
                 WorldClockApp(
                     locationName = locationName,
-                    countryName = countryName
+                    countryName = countryName,
+                    timezone = detectedTimezone
                 )
             }
         }
@@ -130,7 +143,9 @@ class MainActivity : ComponentActivity() {
     private fun detectLocation() {
 
         val locationManager =
-            getSystemService(LOCATION_SERVICE) as LocationManager
+            getSystemService(
+                LOCATION_SERVICE
+            ) as LocationManager
 
 
         val provider = when {
@@ -158,12 +173,21 @@ class MainActivity : ComponentActivity() {
 
         try {
 
-            val location = locationManager.getLastKnownLocation(provider)
+            val location =
+                locationManager.getLastKnownLocation(provider)
+
 
             if (location != null) {
 
                 val latitude = location.latitude
                 val longitude = location.longitude
+
+
+                // Simpan koordinat untuk tahap
+                // timezone berbasis lokasi berikutnya.
+                detectedTimezone =
+                    TimeZone.getDefault().id
+
 
                 getAddressFromLocation(
                     latitude,
@@ -173,13 +197,17 @@ class MainActivity : ComponentActivity() {
             } else {
 
                 locationName = "Location unavailable"
-                countryName = "Try again with GPS enabled"
+                countryName =
+                    "Try again with GPS enabled"
             }
 
         } catch (e: SecurityException) {
 
-            locationName = "Location permission error"
-            countryName = "Please check permissions"
+            locationName =
+                "Location permission error"
+
+            countryName =
+                "Please check permissions"
         }
     }
 
@@ -196,17 +224,20 @@ class MainActivity : ComponentActivity() {
                 Locale.getDefault()
             )
 
+
             @Suppress("DEPRECATION")
-            val addresses = geocoder.getFromLocation(
-                latitude,
-                longitude,
-                1
-            )
+            val addresses =
+                geocoder.getFromLocation(
+                    latitude,
+                    longitude,
+                    1
+                )
 
 
             if (!addresses.isNullOrEmpty()) {
 
                 val address = addresses[0]
+
 
                 locationName =
                     address.locality
@@ -221,14 +252,20 @@ class MainActivity : ComponentActivity() {
 
             } else {
 
-                locationName = "Unknown location"
-                countryName = "Unknown country"
+                locationName =
+                    "Unknown location"
+
+                countryName =
+                    "Unknown country"
             }
 
         } catch (e: Exception) {
 
-            locationName = "Unable to detect"
-            countryName = "Please try again"
+            locationName =
+                "Unable to detect"
+
+            countryName =
+                "Please try again"
         }
     }
 }
@@ -245,7 +282,8 @@ data class ClockCity(
 @Composable
 fun WorldClockApp(
     locationName: String,
-    countryName: String
+    countryName: String,
+    timezone: String
 ) {
 
     var currentTimeMillis by remember {
@@ -300,15 +338,18 @@ fun WorldClockApp(
             FloatingActionButton(
 
                 onClick = {
-                    // Add City akan kita buat nanti
+                    // Add City nanti
                 },
 
                 shape = CircleShape
             ) {
 
                 Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add City"
+                    imageVector =
+                        Icons.Default.Add,
+
+                    contentDescription =
+                        "Add City"
                 )
             }
         }
@@ -331,7 +372,8 @@ fun WorldClockApp(
             item {
 
                 Spacer(
-                    modifier = Modifier.height(12.dp)
+                    modifier =
+                        Modifier.height(12.dp)
                 )
 
                 TopHeader()
@@ -341,13 +383,24 @@ fun WorldClockApp(
             item {
 
                 Spacer(
-                    modifier = Modifier.height(4.dp)
+                    modifier =
+                        Modifier.height(4.dp)
                 )
 
+
                 YourLocationCard(
-                    currentTimeMillis = currentTimeMillis,
-                    locationName = locationName,
-                    countryName = countryName
+
+                    currentTimeMillis =
+                        currentTimeMillis,
+
+                    locationName =
+                        locationName,
+
+                    countryName =
+                        countryName,
+
+                    timezone =
+                        timezone
                 )
             }
 
@@ -355,14 +408,23 @@ fun WorldClockApp(
             item {
 
                 Spacer(
-                    modifier = Modifier.height(8.dp)
+                    modifier =
+                        Modifier.height(8.dp)
                 )
+
 
                 Text(
                     text = "World clocks",
+
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+
+                    fontWeight =
+                        FontWeight.Bold,
+
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onBackground
                 )
             }
 
@@ -370,8 +432,11 @@ fun WorldClockApp(
             items(cities) { city ->
 
                 CityClockCard(
+
                     city = city,
-                    currentTimeMillis = currentTimeMillis
+
+                    currentTimeMillis =
+                        currentTimeMillis
                 )
             }
 
@@ -379,7 +444,8 @@ fun WorldClockApp(
             item {
 
                 Spacer(
-                    modifier = Modifier.height(80.dp)
+                    modifier =
+                        Modifier.height(80.dp)
                 )
             }
         }
@@ -392,7 +458,8 @@ fun TopHeader() {
 
     Row(
 
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth(),
 
         verticalAlignment =
             Alignment.CenterVertically
@@ -400,34 +467,51 @@ fun TopHeader() {
 
 
         Column(
-            modifier = Modifier.weight(1f)
+            modifier =
+                Modifier.weight(1f)
         ) {
 
             Text(
                 text = "WorldClock",
+
                 fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+
+                fontWeight =
+                    FontWeight.Bold,
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onBackground
             )
 
 
             Text(
-                text = "Your time, anywhere in the world.",
+                text =
+                    "Your time, anywhere in the world.",
+
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onSurfaceVariant
             )
         }
 
 
         IconButton(
             onClick = {
-                // Settings akan dibuat nanti
+                // Settings nanti
             }
         ) {
 
             Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings"
+                imageVector =
+                    Icons.Default.Settings,
+
+                contentDescription =
+                    "Settings"
             )
         }
     }
@@ -438,36 +522,51 @@ fun TopHeader() {
 fun YourLocationCard(
     currentTimeMillis: Long,
     locationName: String,
-    countryName: String
+    countryName: String,
+    timezone: String
 ) {
 
-    val currentTime = getCurrentTime(
-        currentTimeMillis = currentTimeMillis,
-        zoneId = "Asia/Jakarta"
-    )
+    val currentTime =
+        getCurrentTime(
+            currentTimeMillis =
+                currentTimeMillis,
+
+            zoneId =
+                timezone
+        )
 
 
-    val gmtOffset = getGmtOffset(
-        currentTimeMillis = currentTimeMillis,
-        zoneId = "Asia/Jakarta"
-    )
+    val gmtOffset =
+        getGmtOffset(
+            currentTimeMillis =
+                currentTimeMillis,
+
+            zoneId =
+                timezone
+        )
 
 
     Card(
 
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth(),
 
-        shape = RoundedCornerShape(28.dp),
+        shape =
+            RoundedCornerShape(28.dp),
 
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.primary
-        )
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme
+                        .colorScheme
+                        .primary
+            )
     ) {
 
 
         Column(
-            modifier = Modifier.padding(22.dp)
+            modifier =
+                Modifier.padding(22.dp)
         ) {
 
 
@@ -479,20 +578,25 @@ fun YourLocationCard(
 
                 Box(
 
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(
-                            MaterialTheme.colorScheme.onPrimary.copy(
-                                alpha = 0.15f
-                            )
-                        ),
+                    modifier =
+                        Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(
+                                MaterialTheme
+                                    .colorScheme
+                                    .onPrimary
+                                    .copy(
+                                        alpha = 0.15f
+                                    )
+                            ),
 
                     contentAlignment =
                         Alignment.Center
                 ) {
 
                     Icon(
+
                         imageVector =
                             Icons.Default.LocationOn,
 
@@ -500,36 +604,58 @@ fun YourLocationCard(
                             "Location",
 
                         tint =
-                            MaterialTheme.colorScheme.onPrimary
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimary
                     )
                 }
 
 
                 Spacer(
-                    modifier = Modifier.size(12.dp)
+                    modifier =
+                        Modifier.size(12.dp)
                 )
 
 
                 Column {
 
                     Text(
-                        text = "YOUR LOCATION",
+
+                        text =
+                            "YOUR LOCATION",
+
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
+
+                        fontWeight =
+                            FontWeight.Bold,
+
                         color =
-                            MaterialTheme.colorScheme.onPrimary.copy(
-                                alpha = 0.75f
-                            )
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimary
+                                .copy(
+                                    alpha = 0.75f
+                                )
                     )
 
 
                     Text(
-                        text = "$locationName, $countryName",
+
+                        text =
+                            "$locationName, $countryName",
+
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
+
+                        fontWeight =
+                            FontWeight.SemiBold,
+
                         color =
-                            MaterialTheme.colorScheme.onPrimary,
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimary,
+
                         maxLines = 1,
+
                         overflow =
                             TextOverflow.Ellipsis
                     )
@@ -538,26 +664,44 @@ fun YourLocationCard(
 
 
             Spacer(
-                modifier = Modifier.height(22.dp)
+                modifier =
+                    Modifier.height(22.dp)
             )
 
 
             Text(
-                text = currentTime,
-                fontSize = 52.sp,
-                fontWeight = FontWeight.Light,
+
+                text =
+                    currentTime,
+
+                fontSize =
+                    52.sp,
+
+                fontWeight =
+                    FontWeight.Light,
+
                 color =
-                    MaterialTheme.colorScheme.onPrimary
+                    MaterialTheme
+                        .colorScheme
+                        .onPrimary
             )
 
 
             Text(
-                text = "$gmtOffset  •  Local time",
-                fontSize = 13.sp,
+
+                text =
+                    "$gmtOffset  •  $timezone",
+
+                fontSize =
+                    13.sp,
+
                 color =
-                    MaterialTheme.colorScheme.onPrimary.copy(
-                        alpha = 0.8f
-                    )
+                    MaterialTheme
+                        .colorScheme
+                        .onPrimary
+                        .copy(
+                            alpha = 0.8f
+                        )
             )
         }
     }
@@ -570,28 +714,41 @@ fun CityClockCard(
     currentTimeMillis: Long
 ) {
 
-    val currentTime = getCurrentTime(
-        currentTimeMillis = currentTimeMillis,
-        zoneId = city.timezone
-    )
+    val currentTime =
+        getCurrentTime(
+            currentTimeMillis =
+                currentTimeMillis,
+
+            zoneId =
+                city.timezone
+        )
 
 
-    val gmtOffset = getGmtOffset(
-        currentTimeMillis = currentTimeMillis,
-        zoneId = city.timezone
-    )
+    val gmtOffset =
+        getGmtOffset(
+            currentTimeMillis =
+                currentTimeMillis,
+
+            zoneId =
+                city.timezone
+        )
 
 
     Card(
 
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier.fillMaxWidth(),
 
-        shape = RoundedCornerShape(24.dp),
+        shape =
+            RoundedCornerShape(24.dp),
 
-        colors = CardDefaults.cardColors(
-            containerColor =
-                MaterialTheme.colorScheme.surface
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme
+                        .colorScheme
+                        .surface
+            ),
 
         elevation =
             CardDefaults.cardElevation(
@@ -602,9 +759,10 @@ fun CityClockCard(
 
         Row(
 
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
 
             verticalAlignment =
                 Alignment.CenterVertically
@@ -612,33 +770,53 @@ fun CityClockCard(
 
 
             Text(
-                text = city.flag,
-                fontSize = 32.sp
+                text =
+                    city.flag,
+
+                fontSize =
+                    32.sp
             )
 
 
             Spacer(
-                modifier = Modifier.size(14.dp)
+                modifier =
+                    Modifier.size(14.dp)
             )
 
 
             Column(
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier.weight(1f)
             ) {
 
                 Text(
-                    text = city.city,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
+
+                    text =
+                        city.city,
+
+                    fontSize =
+                        18.sp,
+
+                    fontWeight =
+                        FontWeight.SemiBold
                 )
 
 
                 Text(
-                    text = city.country,
-                    fontSize = 13.sp,
+
+                    text =
+                        city.country,
+
+                    fontSize =
+                        13.sp,
+
                     color =
-                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant,
+
                     maxLines = 1,
+
                     overflow =
                         TextOverflow.Ellipsis
                 )
@@ -646,23 +824,37 @@ fun CityClockCard(
 
 
             Column(
+
                 horizontalAlignment =
                     Alignment.End
             ) {
 
 
                 Text(
-                    text = currentTime,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Medium
+
+                    text =
+                        currentTime,
+
+                    fontSize =
+                        22.sp,
+
+                    fontWeight =
+                        FontWeight.Medium
                 )
 
 
                 Text(
-                    text = gmtOffset,
-                    fontSize = 12.sp,
+
+                    text =
+                        gmtOffset,
+
+                    fontSize =
+                        12.sp,
+
                     color =
-                        MaterialTheme.colorScheme.primary
+                        MaterialTheme
+                            .colorScheme
+                            .primary
                 )
             }
         }
@@ -677,8 +869,15 @@ fun WorldClockPreview() {
     WorldClockTheme {
 
         WorldClockApp(
-            locationName = "Jakarta",
-            countryName = "Indonesia"
+
+            locationName =
+                "Jakarta",
+
+            countryName =
+                "Indonesia",
+
+            timezone =
+                "Asia/Jakarta"
         )
     }
 }
