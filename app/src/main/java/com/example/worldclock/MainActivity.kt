@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -55,13 +56,19 @@ import kotlinx.coroutines.delay
 import java.util.Locale
 import java.util.TimeZone
 
-
 class MainActivity : ComponentActivity() {
 
-    private var locationName = "Detecting location..."
-    private var countryName = "Please wait..."
-    private var detectedTimezone = TimeZone.getDefault().id
+    private var locationName by mutableStateOf(
+        "Detecting location..."
+    )
 
+    private var countryName by mutableStateOf(
+        "Please wait..."
+    )
+
+    private var detectedTimezone by mutableStateOf(
+        TimeZone.getDefault().id
+    )
 
     private val locationPermissionLauncher =
         registerForActivityResult(
@@ -78,38 +85,44 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 ] == true
 
-
             if (fineGranted || coarseGranted) {
-
                 detectLocation()
-
             } else {
+                locationName =
+                    "Location permission denied"
 
-                locationName = "Location permission denied"
-                countryName = "Please enable location permission"
+                countryName =
+                    "Please enable location permission"
             }
         }
 
-
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
         requestLocationPermission()
 
-
         setContent {
-
             WorldClockTheme {
 
                 WorldClockApp(
-                    locationName = locationName,
-                    countryName = countryName,
-                    timezone = detectedTimezone
+                    locationName =
+                        locationName,
+
+                    countryName =
+                        countryName,
+
+                    timezone =
+                        detectedTimezone,
+
+                    onRefreshLocation = {
+                        detectLocation()
+                    }
                 )
             }
         }
     }
-
 
     private fun requestLocationPermission() {
 
@@ -122,7 +135,6 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
-
 
         if (fineGranted || coarseGranted) {
 
@@ -139,55 +151,66 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
     private fun detectLocation() {
+
+        locationName =
+            "Detecting location..."
+
+        countryName =
+            "Please wait..."
 
         val locationManager =
             getSystemService(
                 LOCATION_SERVICE
             ) as LocationManager
 
-
         val provider = when {
 
             locationManager.isProviderEnabled(
                 LocationManager.GPS_PROVIDER
-            ) -> LocationManager.GPS_PROVIDER
+            ) -> {
+                LocationManager.GPS_PROVIDER
+            }
 
             locationManager.isProviderEnabled(
                 LocationManager.NETWORK_PROVIDER
-            ) -> LocationManager.NETWORK_PROVIDER
+            ) -> {
+                LocationManager.NETWORK_PROVIDER
+            }
 
-            else -> null
+            else -> {
+                null
+            }
         }
-
 
         if (provider == null) {
 
-            locationName = "Location unavailable"
-            countryName = "Please enable GPS"
+            locationName =
+                "Location unavailable"
+
+            countryName =
+                "Please enable GPS"
 
             return
         }
 
-
         try {
 
             val location =
-                locationManager.getLastKnownLocation(provider)
-
+                locationManager.getLastKnownLocation(
+                    provider
+                )
 
             if (location != null) {
 
-                val latitude = location.latitude
-                val longitude = location.longitude
+                val latitude =
+                    location.latitude
 
+                val longitude =
+                    location.longitude
 
-                // Simpan koordinat untuk tahap
-                // timezone berbasis lokasi berikutnya.
                 detectedTimezone =
                     TimeZone.getDefault().id
-
 
                 getAddressFromLocation(
                     latitude,
@@ -196,7 +219,9 @@ class MainActivity : ComponentActivity() {
 
             } else {
 
-                locationName = "Location unavailable"
+                locationName =
+                    "Location unavailable"
+
                 countryName =
                     "Try again with GPS enabled"
             }
@@ -211,7 +236,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
     private fun getAddressFromLocation(
         latitude: Double,
         longitude: Double
@@ -219,11 +243,11 @@ class MainActivity : ComponentActivity() {
 
         try {
 
-            val geocoder = Geocoder(
-                this,
-                Locale.getDefault()
-            )
-
+            val geocoder =
+                Geocoder(
+                    this,
+                    Locale.getDefault()
+                )
 
             @Suppress("DEPRECATION")
             val addresses =
@@ -233,18 +257,16 @@ class MainActivity : ComponentActivity() {
                     1
                 )
 
-
             if (!addresses.isNullOrEmpty()) {
 
-                val address = addresses[0]
-
+                val address =
+                    addresses[0]
 
                 locationName =
                     address.locality
                         ?: address.subAdminArea
                                 ?: address.adminArea
                                 ?: "Unknown location"
-
 
                 countryName =
                     address.countryName
@@ -270,7 +292,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
 data class ClockCity(
     val city: String,
     val country: String,
@@ -278,12 +299,12 @@ data class ClockCity(
     val timezone: String
 )
 
-
 @Composable
 fun WorldClockApp(
     locationName: String,
     countryName: String,
-    timezone: String
+    timezone: String,
+    onRefreshLocation: () -> Unit
 ) {
 
     var currentTimeMillis by remember {
@@ -292,7 +313,6 @@ fun WorldClockApp(
             System.currentTimeMillis()
         )
     }
-
 
     LaunchedEffect(Unit) {
 
@@ -304,7 +324,6 @@ fun WorldClockApp(
             delay(1000)
         }
     }
-
 
     val cities = listOf(
 
@@ -330,17 +349,14 @@ fun WorldClockApp(
         )
     )
 
-
     Scaffold(
 
         floatingActionButton = {
 
             FloatingActionButton(
-
                 onClick = {
                     // Add City nanti
                 },
-
                 shape = CircleShape
             ) {
 
@@ -356,18 +372,19 @@ fun WorldClockApp(
 
     ) { innerPadding ->
 
-
         LazyColumn(
 
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(
+                        horizontal = 20.dp
+                    ),
 
             verticalArrangement =
                 Arrangement.spacedBy(14.dp)
         ) {
-
 
             item {
 
@@ -379,14 +396,12 @@ fun WorldClockApp(
                 TopHeader()
             }
 
-
             item {
 
                 Spacer(
                     modifier =
                         Modifier.height(4.dp)
                 )
-
 
                 YourLocationCard(
 
@@ -400,10 +415,12 @@ fun WorldClockApp(
                         countryName,
 
                     timezone =
-                        timezone
+                        timezone,
+
+                    onRefreshLocation =
+                        onRefreshLocation
                 )
             }
-
 
             item {
 
@@ -412,11 +429,11 @@ fun WorldClockApp(
                         Modifier.height(8.dp)
                 )
 
-
                 Text(
                     text = "World clocks",
 
-                    fontSize = 20.sp,
+                    fontSize =
+                        20.sp,
 
                     fontWeight =
                         FontWeight.Bold,
@@ -427,7 +444,6 @@ fun WorldClockApp(
                             .onBackground
                 )
             }
-
 
             items(cities) { city ->
 
@@ -440,7 +456,6 @@ fun WorldClockApp(
                 )
             }
 
-
             item {
 
                 Spacer(
@@ -451,7 +466,6 @@ fun WorldClockApp(
         }
     }
 }
-
 
 @Composable
 fun TopHeader() {
@@ -465,7 +479,6 @@ fun TopHeader() {
             Alignment.CenterVertically
     ) {
 
-
         Column(
             modifier =
                 Modifier.weight(1f)
@@ -474,7 +487,8 @@ fun TopHeader() {
             Text(
                 text = "WorldClock",
 
-                fontSize = 28.sp,
+                fontSize =
+                    28.sp,
 
                 fontWeight =
                     FontWeight.Bold,
@@ -485,12 +499,12 @@ fun TopHeader() {
                         .onBackground
             )
 
-
             Text(
                 text =
                     "Your time, anywhere in the world.",
 
-                fontSize = 14.sp,
+                fontSize =
+                    14.sp,
 
                 color =
                     MaterialTheme
@@ -498,7 +512,6 @@ fun TopHeader() {
                         .onSurfaceVariant
             )
         }
-
 
         IconButton(
             onClick = {
@@ -517,34 +530,39 @@ fun TopHeader() {
     }
 }
 
-
 @Composable
 fun YourLocationCard(
+
     currentTimeMillis: Long,
+
     locationName: String,
+
     countryName: String,
-    timezone: String
+
+    timezone: String,
+
+    onRefreshLocation: () -> Unit
 ) {
 
     val currentTime =
         getCurrentTime(
+
             currentTimeMillis =
                 currentTimeMillis,
 
             zoneId =
                 timezone
         )
-
 
     val gmtOffset =
         getGmtOffset(
+
             currentTimeMillis =
                 currentTimeMillis,
 
             zoneId =
                 timezone
         )
-
 
     Card(
 
@@ -556,6 +574,7 @@ fun YourLocationCard(
 
         colors =
             CardDefaults.cardColors(
+
                 containerColor =
                     MaterialTheme
                         .colorScheme
@@ -563,18 +582,17 @@ fun YourLocationCard(
             )
     ) {
 
-
         Column(
+
             modifier =
                 Modifier.padding(22.dp)
         ) {
 
-
             Row(
+
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
-
 
                 Box(
 
@@ -583,6 +601,7 @@ fun YourLocationCard(
                             .size(42.dp)
                             .clip(CircleShape)
                             .background(
+
                                 MaterialTheme
                                     .colorScheme
                                     .onPrimary
@@ -610,21 +629,23 @@ fun YourLocationCard(
                     )
                 }
 
-
                 Spacer(
                     modifier =
                         Modifier.size(12.dp)
                 )
 
-
-                Column {
+                Column(
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
 
                     Text(
 
                         text =
                             "YOUR LOCATION",
 
-                        fontSize = 12.sp,
+                        fontSize =
+                            12.sp,
 
                         fontWeight =
                             FontWeight.Bold,
@@ -638,13 +659,13 @@ fun YourLocationCard(
                                 )
                     )
 
-
                     Text(
 
                         text =
                             "$locationName, $countryName",
 
-                        fontSize = 18.sp,
+                        fontSize =
+                            18.sp,
 
                         fontWeight =
                             FontWeight.SemiBold,
@@ -660,14 +681,32 @@ fun YourLocationCard(
                             TextOverflow.Ellipsis
                     )
                 }
-            }
 
+                IconButton(
+                    onClick =
+                        onRefreshLocation
+                ) {
+
+                    Icon(
+
+                        imageVector =
+                            Icons.Default.Refresh,
+
+                        contentDescription =
+                            "Refresh location",
+
+                        tint =
+                            MaterialTheme
+                                .colorScheme
+                                .onPrimary
+                    )
+                }
+            }
 
             Spacer(
                 modifier =
                     Modifier.height(22.dp)
             )
-
 
             Text(
 
@@ -685,7 +724,6 @@ fun YourLocationCard(
                         .colorScheme
                         .onPrimary
             )
-
 
             Text(
 
@@ -707,32 +745,33 @@ fun YourLocationCard(
     }
 }
 
-
 @Composable
 fun CityClockCard(
+
     city: ClockCity,
+
     currentTimeMillis: Long
 ) {
 
     val currentTime =
         getCurrentTime(
+
             currentTimeMillis =
                 currentTimeMillis,
 
             zoneId =
                 city.timezone
         )
-
 
     val gmtOffset =
         getGmtOffset(
+
             currentTimeMillis =
                 currentTimeMillis,
 
             zoneId =
                 city.timezone
         )
-
 
     Card(
 
@@ -744,6 +783,7 @@ fun CityClockCard(
 
         colors =
             CardDefaults.cardColors(
+
                 containerColor =
                     MaterialTheme
                         .colorScheme
@@ -756,7 +796,6 @@ fun CityClockCard(
             )
     ) {
 
-
         Row(
 
             modifier =
@@ -768,8 +807,8 @@ fun CityClockCard(
                 Alignment.CenterVertically
         ) {
 
-
             Text(
+
                 text =
                     city.flag,
 
@@ -777,14 +816,13 @@ fun CityClockCard(
                     32.sp
             )
 
-
             Spacer(
                 modifier =
                     Modifier.size(14.dp)
             )
 
-
             Column(
+
                 modifier =
                     Modifier.weight(1f)
             ) {
@@ -800,7 +838,6 @@ fun CityClockCard(
                     fontWeight =
                         FontWeight.SemiBold
                 )
-
 
                 Text(
 
@@ -822,13 +859,11 @@ fun CityClockCard(
                 )
             }
 
-
             Column(
 
                 horizontalAlignment =
                     Alignment.End
             ) {
-
 
                 Text(
 
@@ -841,7 +876,6 @@ fun CityClockCard(
                     fontWeight =
                         FontWeight.Medium
                 )
-
 
                 Text(
 
@@ -861,7 +895,6 @@ fun CityClockCard(
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 fun WorldClockPreview() {
@@ -877,7 +910,9 @@ fun WorldClockPreview() {
                 "Indonesia",
 
             timezone =
-                "Asia/Jakarta"
+                "Asia/Jakarta",
+
+            onRefreshLocation = {}
         )
     }
 }
