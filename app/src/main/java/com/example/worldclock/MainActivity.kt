@@ -55,6 +55,10 @@ import com.example.worldclock.ui.theme.WorldClockTheme
 import kotlinx.coroutines.delay
 import java.util.Locale
 import java.util.TimeZone
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 
 class MainActivity : ComponentActivity() {
 
@@ -314,6 +318,10 @@ fun WorldClockApp(
         )
     }
 
+    var isAnalog by remember {
+        mutableStateOf(false)
+    }
+
     LaunchedEffect(Unit) {
 
         while (true) {
@@ -424,6 +432,19 @@ fun WorldClockApp(
 
             item {
 
+                ClockDisplaySelector(
+
+                    isAnalog =
+                        isAnalog,
+
+                    onModeChange = {
+                        isAnalog = it
+                    }
+                )
+            }
+
+            item {
+
                 Spacer(
                     modifier =
                         Modifier.height(8.dp)
@@ -452,7 +473,10 @@ fun WorldClockApp(
                     city = city,
 
                     currentTimeMillis =
-                        currentTimeMillis
+                        currentTimeMillis,
+
+                    isAnalog =
+                        isAnalog
                 )
             }
 
@@ -746,11 +770,92 @@ fun YourLocationCard(
 }
 
 @Composable
+fun ClockDisplaySelector(
+    isAnalog: Boolean,
+    onModeChange: (Boolean) -> Unit
+) {
+
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+
+        Text(
+            text = "Clock style",
+            fontSize = 14.sp,
+            fontWeight =
+                FontWeight.SemiBold,
+            color =
+                MaterialTheme
+                    .colorScheme
+                    .onBackground
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(8.dp)
+        )
+
+        SingleChoiceSegmentedButtonRow(
+            modifier =
+                Modifier.fillMaxWidth()
+        ) {
+
+            SegmentedButton(
+
+                selected =
+                    !isAnalog,
+
+                onClick = {
+                    onModeChange(false)
+                },
+
+                shape =
+                    SegmentedButtonDefaults
+                        .itemShape(
+                            index = 0,
+                            count = 2
+                        )
+            ) {
+
+                Text(
+                    text = "Digital"
+                )
+            }
+
+            SegmentedButton(
+
+                selected =
+                    isAnalog,
+
+                onClick = {
+                    onModeChange(true)
+                },
+
+                shape =
+                    SegmentedButtonDefaults
+                        .itemShape(
+                            index = 1,
+                            count = 2
+                        )
+            ) {
+
+                Text(
+                    text = "Analog"
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun CityClockCard(
 
     city: ClockCity,
 
-    currentTimeMillis: Long
+    currentTimeMillis: Long,
+
+    isAnalog: Boolean
 ) {
 
     val currentTime =
@@ -928,14 +1033,31 @@ fun CityClockCard(
                     Alignment.Center
             ) {
 
-                AnalogClock(
+                if (isAnalog) {
 
-                    currentTimeMillis =
-                        currentTimeMillis,
+                    AnalogClock(
 
-                    timezone =
-                        city.timezone
-                )
+                        currentTimeMillis =
+                            currentTimeMillis,
+
+                        timezone =
+                            city.timezone
+                    )
+
+                } else {
+
+                    Text(
+
+                        text =
+                            currentTime,
+
+                        fontSize =
+                            42.sp,
+
+                        fontWeight =
+                            FontWeight.Light
+                    )
+                }
             }
 
             Spacer(
@@ -952,10 +1074,15 @@ fun CityClockCard(
                     Modifier.fillMaxWidth(),
 
                 fontSize =
-                    26.sp,
+                    16.sp,
 
                 fontWeight =
-                    FontWeight.Medium
+                    FontWeight.Medium,
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onSurfaceVariant
             )
 
             Text(
