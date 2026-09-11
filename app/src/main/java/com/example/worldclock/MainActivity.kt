@@ -773,6 +773,16 @@ fun CityClockCard(
                 city.timezone
         )
 
+    val isDay =
+        isDayTime(
+
+            currentTimeMillis =
+                currentTimeMillis,
+
+            timezone =
+                city.timezone
+        )
+
     Card(
 
         modifier =
@@ -796,101 +806,171 @@ fun CityClockCard(
             )
     ) {
 
-        Row(
+        Column(
 
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
-
-            verticalAlignment =
-                Alignment.CenterVertically
+                    .padding(20.dp)
         ) {
+
+            Row(
+
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                Text(
+
+                    text =
+                        city.flag,
+
+                    fontSize =
+                        32.sp
+                )
+
+                Spacer(
+                    modifier =
+                        Modifier.size(14.dp)
+                )
+
+                Column(
+
+                    modifier =
+                        Modifier.weight(1f)
+                ) {
+
+                    Text(
+
+                        text =
+                            city.city,
+
+                        fontSize =
+                            18.sp,
+
+                        fontWeight =
+                            FontWeight.SemiBold
+                    )
+
+                    Text(
+
+                        text =
+                            city.country,
+
+                        fontSize =
+                            13.sp,
+
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .onSurfaceVariant,
+
+                        maxLines =
+                            1,
+
+                        overflow =
+                            TextOverflow.Ellipsis
+                    )
+                }
+
+                Column(
+
+                    horizontalAlignment =
+                        Alignment.End
+                ) {
+
+                    Text(
+
+                        text =
+                            if (isDay) {
+                                "☀️ Day"
+                            } else {
+                                "🌙 Night"
+                            },
+
+                        fontSize =
+                            13.sp,
+
+                        fontWeight =
+                            FontWeight.Medium
+                    )
+
+                    Text(
+
+                        text =
+                            gmtOffset,
+
+                        fontSize =
+                            12.sp,
+
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .primary
+                    )
+                }
+            }
+
+            Spacer(
+                modifier =
+                    Modifier.height(18.dp)
+            )
+
+            Box(
+
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                contentAlignment =
+                    Alignment.Center
+            ) {
+
+                AnalogClock(
+
+                    currentTimeMillis =
+                        currentTimeMillis,
+
+                    timezone =
+                        city.timezone
+                )
+            }
+
+            Spacer(
+                modifier =
+                    Modifier.height(14.dp)
+            )
 
             Text(
 
                 text =
-                    city.flag,
+                    currentTime,
+
+                modifier =
+                    Modifier.fillMaxWidth(),
 
                 fontSize =
-                    32.sp
+                    26.sp,
+
+                fontWeight =
+                    FontWeight.Medium
             )
 
-            Spacer(
-                modifier =
-                    Modifier.size(14.dp)
+            Text(
+
+                text =
+                    city.timezone,
+
+                fontSize =
+                    12.sp,
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onSurfaceVariant
             )
-
-            Column(
-
-                modifier =
-                    Modifier.weight(1f)
-            ) {
-
-                Text(
-
-                    text =
-                        city.city,
-
-                    fontSize =
-                        18.sp,
-
-                    fontWeight =
-                        FontWeight.SemiBold
-                )
-
-                Text(
-
-                    text =
-                        city.country,
-
-                    fontSize =
-                        13.sp,
-
-                    color =
-                        MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant,
-
-                    maxLines = 1,
-
-                    overflow =
-                        TextOverflow.Ellipsis
-                )
-            }
-
-            Column(
-
-                horizontalAlignment =
-                    Alignment.End
-            ) {
-
-                Text(
-
-                    text =
-                        currentTime,
-
-                    fontSize =
-                        22.sp,
-
-                    fontWeight =
-                        FontWeight.Medium
-                )
-
-                Text(
-
-                    text =
-                        gmtOffset,
-
-                    fontSize =
-                        12.sp,
-
-                    color =
-                        MaterialTheme
-                            .colorScheme
-                            .primary
-                )
-            }
         }
     }
 }
