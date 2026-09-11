@@ -1,13 +1,18 @@
 package com.example.worldclock
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Address
 import android.location.Geocoder
+import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
+
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,40 +23,52 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+
+import androidx.compose.foundation.shape.RoundedCornerShape
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+import androidx.core.app.ActivityCompat
+
 import com.example.worldclock.ui.theme.WorldClockTheme
-import kotlinx.coroutines.delay
-import java.util.Locale
+
 import java.util.TimeZone
 
 
@@ -74,17 +91,17 @@ class MainActivity : ComponentActivity() {
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
 
-            val fineGranted =
+            val fineLocationGranted =
                 permissions[
                     Manifest.permission.ACCESS_FINE_LOCATION
                 ] == true
 
-            val coarseGranted =
+            val coarseLocationGranted =
                 permissions[
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 ] == true
 
-            if (fineGranted || coarseGranted) {
+            if (fineLocationGranted || coarseLocationGranted) {
 
                 detectLocation()
 
@@ -105,179 +122,140 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        requestLocationPermission()
-
         setContent {
 
             WorldClockTheme {
 
                 WorldClockApp(
-
-                    locationName =
-                        locationName,
-
-                    countryName =
-                        countryName,
-
-                    timezone =
-                        detectedTimezone,
+                    locationName = locationName,
+                    countryName = countryName,
+                    timezone = detectedTimezone,
 
                     onRefreshLocation = {
-                        detectLocation()
+                        requestLocationPermission()
                     }
                 )
             }
         }
+
+        requestLocationPermission()
     }
 
 
     private fun requestLocationPermission() {
 
-        val fineGranted =
-            checkSelfPermission(
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+        locationPermissionLauncher.launch(
 
-        val coarseGranted =
-            checkSelfPermission(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-
-
-        if (fineGranted || coarseGranted) {
-
-            detectLocation()
-
-        } else {
-
-            locationPermissionLauncher.launch(
-
-                arrayOf(
-
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
             )
-        }
+        )
     }
 
 
     private fun detectLocation() {
 
-        locationName =
-            "Detecting location..."
-
-        countryName =
-            "Please wait..."
-
-
         val locationManager =
             getSystemService(
-                LOCATION_SERVICE
+                Context.LOCATION_SERVICE
             ) as LocationManager
 
 
-        val provider = when {
+        val hasFineLocation =
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
-            locationManager.isProviderEnabled(
-                LocationManager.GPS_PROVIDER
-            ) ->
-                LocationManager.GPS_PROVIDER
 
-            locationManager.isProviderEnabled(
-                LocationManager.NETWORK_PROVIDER
-            ) ->
-                LocationManager.NETWORK_PROVIDER
+        val hasCoarseLocation =
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
 
-            else ->
-                null
+
+        if (!hasFineLocation && !hasCoarseLocation) {
+            return
         }
 
 
-        if (provider == null) {
+        var location: Location? = null
 
-            locationName =
-                "Location unavailable"
 
-            countryName =
-                "Please enable GPS"
+        try {
+
+            if (
+                locationManager.isProviderEnabled(
+                    LocationManager.GPS_PROVIDER
+                )
+            ) {
+
+                location =
+                    locationManager.getLastKnownLocation(
+                        LocationManager.GPS_PROVIDER
+                    )
+            }
+
+
+            if (
+                location == null &&
+                locationManager.isProviderEnabled(
+                    LocationManager.NETWORK_PROVIDER
+                )
+            ) {
+
+                location =
+                    locationManager.getLastKnownLocation(
+                        LocationManager.NETWORK_PROVIDER
+                    )
+            }
+
+        } catch (
+            _: SecurityException
+        ) {
 
             return
         }
 
 
-        try {
+        if (location != null) {
 
-            val location =
-                locationManager.getLastKnownLocation(
-                    provider
-                )
+            getAddressFromLocation(
+                location
+            )
 
-
-            if (location != null) {
-
-                val latitude =
-                    location.latitude
-
-                val longitude =
-                    location.longitude
-
-
-                detectedTimezone =
-                    TimeZone.getDefault().id
-
-
-                getAddressFromLocation(
-                    latitude,
-                    longitude
-                )
-
-            } else {
-
-                locationName =
-                    "Location unavailable"
-
-                countryName =
-                    "Try again with GPS enabled"
-            }
-
-        } catch (e: SecurityException) {
+        } else {
 
             locationName =
-                "Location permission error"
+                "Location unavailable"
 
             countryName =
-                "Please check permissions"
+                "Please try again"
         }
     }
 
 
     private fun getAddressFromLocation(
-        latitude: Double,
-        longitude: Double
+        location: Location
     ) {
 
         try {
 
             val geocoder =
-                Geocoder(
-                    this,
-                    Locale.getDefault()
-                )
-
+                Geocoder(this)
 
             @Suppress("DEPRECATION")
-
-            val addresses =
+            val addresses: List<Address> =
                 geocoder.getFromLocation(
-                    latitude,
-                    longitude,
+                    location.latitude,
+                    location.longitude,
                     1
-                )
+                ) ?: emptyList()
 
 
-            if (!addresses.isNullOrEmpty()) {
+            if (addresses.isNotEmpty()) {
 
                 val address =
                     addresses[0]
@@ -293,32 +271,26 @@ class MainActivity : ComponentActivity() {
                 countryName =
                     address.countryName
                         ?: "Unknown country"
-
-            } else {
-
-                locationName =
-                    "Unknown location"
-
-                countryName =
-                    "Unknown country"
             }
 
-        } catch (e: Exception) {
+        } catch (
+            _: Exception
+        ) {
 
             locationName =
-                "Unable to detect"
+                "Unknown location"
 
             countryName =
-                "Please try again"
+                "Unknown country"
         }
     }
 }
 
 
 /*
- * ============================================================
- * MAIN APP
- * ============================================================
+ * =========================================================
+ * WORLD CLOCK APP
+ * =========================================================
  */
 
 @Composable
@@ -329,18 +301,16 @@ fun WorldClockApp(
     onRefreshLocation: () -> Unit
 ) {
 
+    /*
+     * Apakah halaman Search sedang dibuka?
+     */
     var showSearchScreen by remember {
         mutableStateOf(false)
     }
 
+
     /*
-     * Daftar kota yang ditampilkan
-     * di World Clock.
-     *
-     * Default:
-     * Tokyo
-     * London
-     * New York
+     * Daftar kota yang sedang dipilih user.
      */
     var selectedCities by remember {
 
@@ -374,10 +344,19 @@ fun WorldClockApp(
 
 
     /*
-     * Kalau sedang search,
-     * tampilkan Search City.
+     * Menyimpan timezone kota yang dijadikan favorite.
      */
+    var favoriteCities by remember {
 
+        mutableStateOf(
+            setOf<String>()
+        )
+    }
+
+
+    /*
+     * Kalau user sedang berada di Search City.
+     */
     if (showSearchScreen) {
 
         SearchCityScreen(
@@ -387,12 +366,12 @@ fun WorldClockApp(
                 showSearchScreen = false
             },
 
+
             onCitySelected = { city ->
 
                 /*
                  * Cek apakah kota sudah ada.
                  */
-
                 val alreadyExists =
                     selectedCities.any {
 
@@ -405,7 +384,6 @@ fun WorldClockApp(
                  * Kalau belum ada,
                  * masukkan ke daftar.
                  */
-
                 if (!alreadyExists) {
 
                     selectedCities =
@@ -414,34 +392,69 @@ fun WorldClockApp(
 
 
                 /*
-                 * Setelah memilih kota,
+                 * Setelah pilih kota,
                  * kembali ke Home.
                  */
-
                 showSearchScreen = false
             }
         )
 
+
     } else {
 
+        /*
+         * Home Screen.
+         */
         WorldClockHomeScreen(
 
-            locationName =
-                locationName,
+            locationName = locationName,
 
-            countryName =
-                countryName,
+            countryName = countryName,
 
-            timezone =
-                timezone,
+            timezone = timezone,
 
-            cities =
-                selectedCities,
+            cities = selectedCities,
+
+            favoriteCities = favoriteCities,
+
+
+            /*
+             * Ketika tombol ⭐ ditekan.
+             */
+            onToggleFavorite = { city ->
+
+                favoriteCities =
+
+                    if (
+                        favoriteCities.contains(
+                            city.timezone
+                        )
+                    ) {
+
+                        /*
+                         * Kalau sudah favorite,
+                         * hapus dari favorite.
+                         */
+                        favoriteCities -
+                                city.timezone
+
+                    } else {
+
+                        /*
+                         * Kalau belum favorite,
+                         * tambahkan.
+                         */
+                        favoriteCities +
+                                city.timezone
+                    }
+            },
+
 
             onRefreshLocation = {
 
                 onRefreshLocation()
             },
+
 
             onAddCity = {
 
@@ -453,28 +466,39 @@ fun WorldClockApp(
 
 
 /*
- * ============================================================
+ * =========================================================
  * HOME SCREEN
- * ============================================================
+ * =========================================================
  */
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldClockHomeScreen(
     locationName: String,
     countryName: String,
     timezone: String,
     cities: List<ClockCity>,
+    favoriteCities: Set<String>,
+    onToggleFavorite: (ClockCity) -> Unit,
     onRefreshLocation: () -> Unit,
     onAddCity: () -> Unit
 ) {
 
+    /*
+     * Waktu sekarang.
+     */
     var currentTimeMillis by remember {
 
-        mutableLongStateOf(
+        mutableStateOf(
             System.currentTimeMillis()
         )
     }
 
 
+    /*
+     * false = digital
+     * true = analog
+     */
     var isAnalog by remember {
 
         mutableStateOf(false)
@@ -482,9 +506,18 @@ fun WorldClockHomeScreen(
 
 
     /*
-     * REAL-TIME CLOCK
+     * 0 = All Cities
+     * 1 = Favorites
      */
+    var selectedTab by remember {
 
+        mutableStateOf(0)
+    }
+
+
+    /*
+     * Update waktu setiap 1 detik.
+     */
     LaunchedEffect(Unit) {
 
         while (true) {
@@ -492,26 +525,87 @@ fun WorldClockHomeScreen(
             currentTimeMillis =
                 System.currentTimeMillis()
 
-            delay(1000)
+            kotlinx.coroutines.delay(1000)
         }
     }
 
 
+    /*
+     * Tentukan kota mana yang ditampilkan.
+     */
+    val visibleCities =
+
+        if (selectedTab == 0) {
+
+            cities
+
+        } else {
+
+            cities.filter {
+
+                favoriteCities.contains(
+                    it.timezone
+                )
+            }
+        }
+
+
     Scaffold(
+
+        topBar = {
+
+            TopAppBar(
+
+                title = {
+
+                    Column {
+
+                        Text(
+                            text = "World Clock",
+                            fontWeight =
+                                FontWeight.Bold
+                        )
+
+                        Text(
+                            text =
+                                "Your time around the world",
+                            fontSize = 12.sp,
+                            color =
+                                MaterialTheme
+                                    .colorScheme
+                                    .onSurfaceVariant
+                        )
+                    }
+                },
+
+
+                actions = {
+
+                    IconButton(
+                        onClick =
+                            onRefreshLocation
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.Refresh,
+
+                            contentDescription =
+                                "Refresh location"
+                        )
+                    }
+                }
+            )
+        },
+
 
         floatingActionButton = {
 
             FloatingActionButton(
-
-                onClick = {
-
-                    onAddCity()
-                }
-
+                onClick = onAddCity
             ) {
 
                 Icon(
-
                     imageVector =
                         Icons.Default.Add,
 
@@ -526,41 +620,22 @@ fun WorldClockHomeScreen(
 
         LazyColumn(
 
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(
+                    horizontal = 16.dp
+                ),
 
             verticalArrangement =
-                Arrangement.spacedBy(16.dp)
+                Arrangement.spacedBy(14.dp)
         ) {
 
 
             /*
-             * HEADER
+             * LOCAL TIME
              */
-
             item {
-
-                Spacer(
-                    modifier =
-                        Modifier.height(8.dp)
-                )
-
-
-                Text(
-
-                    text =
-                        "WorldClock",
-
-                    fontSize =
-                        32.sp,
-
-                    fontWeight =
-                        FontWeight.Bold
-                )
-
 
                 Spacer(
                     modifier =
@@ -568,29 +643,7 @@ fun WorldClockHomeScreen(
                 )
 
 
-                Text(
-
-                    text =
-                        "Track time around the world",
-
-                    fontSize =
-                        14.sp,
-
-                    color =
-                        MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant
-                )
-            }
-
-
-            /*
-             * YOUR LOCATION
-             */
-
-            item {
-
-                YourLocationCard(
+                LocalTimeCard(
 
                     locationName =
                         locationName,
@@ -601,9 +654,6 @@ fun WorldClockHomeScreen(
                     timezone =
                         timezone,
 
-                    onRefresh =
-                        onRefreshLocation,
-
                     currentTimeMillis =
                         currentTimeMillis
                 )
@@ -611,78 +661,176 @@ fun WorldClockHomeScreen(
 
 
             /*
-             * CLOCK STYLE
+             * WORLD CITIES HEADER
              */
-
             item {
 
-                ClockDisplaySelector(
+                Row(
 
-                    isAnalog =
-                        isAnalog,
+                    modifier =
+                        Modifier.fillMaxWidth(),
 
-                    onModeChange = {
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween,
 
-                        isAnalog = it
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text =
+                            "World Cities",
+
+                        fontSize =
+                            22.sp,
+
+                        fontWeight =
+                            FontWeight.Bold
+                    )
+
+
+                    Row {
+
+                        /*
+                         * Digital button.
+                         */
+                        IconButton(
+                            onClick = {
+                                isAnalog = false
+                            }
+                        ) {
+
+                            Icon(
+                                imageVector =
+                                    Icons.Default.LightMode,
+
+                                contentDescription =
+                                    "Digital clock"
+                            )
+                        }
+
+
+                        /*
+                         * Analog button.
+                         */
+                        IconButton(
+                            onClick = {
+                                isAnalog = true
+                            }
+                        ) {
+
+                            Icon(
+                                imageVector =
+                                    Icons.Default.DarkMode,
+
+                                contentDescription =
+                                    "Analog clock"
+                            )
+                        }
                     }
-                )
+                }
             }
 
 
             /*
-             * WORLD CLOCK TITLE
+             * ALL / FAVORITES
              */
-
             item {
 
-                Text(
+                TabRow(
 
-                    text =
-                        "World clocks",
+                    selectedTabIndex =
+                        selectedTab
+                ) {
 
-                    fontSize =
-                        20.sp,
+                    Tab(
 
-                    fontWeight =
-                        FontWeight.SemiBold
-                )
+                        selected =
+                            selectedTab == 0,
+
+                        onClick = {
+                            selectedTab = 0
+                        },
+
+                        text = {
+                            Text("All Cities")
+                        }
+                    )
+
+
+                    Tab(
+
+                        selected =
+                            selectedTab == 1,
+
+                        onClick = {
+                            selectedTab = 1
+                        },
+
+                        text = {
+                            Text("Favorites")
+                        }
+                    )
+                }
             }
 
 
             /*
-             * CITY LIST
+             * Kalau Favorites kosong.
              */
+            if (visibleCities.isEmpty()) {
 
-            items(
+                item {
 
-                items =
-                    cities,
-
-                key = {
-
-                    it.timezone
+                    EmptyFavoritesState()
                 }
 
-            ) { city ->
 
-                CityClockCard(
+            } else {
 
-                    city =
-                        city,
+                /*
+                 * Tampilkan semua kota.
+                 */
+                items(
 
-                    currentTimeMillis =
-                        currentTimeMillis,
+                    items = visibleCities,
 
-                    isAnalog =
-                        isAnalog
-                )
+                    key = {
+                        it.timezone
+                    }
+
+                ) { city ->
+
+
+                    CityClockCard(
+
+                        city = city,
+
+                        currentTimeMillis =
+                            currentTimeMillis,
+
+                        isAnalog =
+                            isAnalog,
+
+                        isFavorite =
+                            favoriteCities.contains(
+                                city.timezone
+                            ),
+
+                        onToggleFavorite = {
+
+                            onToggleFavorite(
+                                city
+                            )
+                        }
+                    )
+                }
             }
 
 
             /*
-             * Bottom spacing
+             * Space supaya FAB tidak menutupi card terakhir.
              */
-
             item {
 
                 Spacer(
@@ -693,51 +841,33 @@ fun WorldClockHomeScreen(
         }
     }
 }
+
+
 /*
- * ============================================================
- * YOUR LOCATION CARD
- * ============================================================
+ * =========================================================
+ * LOCAL TIME CARD
+ * =========================================================
  */
 
 @Composable
-fun YourLocationCard(
+fun LocalTimeCard(
     locationName: String,
     countryName: String,
     timezone: String,
-    onRefresh: () -> Unit,
     currentTimeMillis: Long
 ) {
 
-    val currentTime =
+    val time =
         getCurrentTime(
-
-            currentTimeMillis =
-                currentTimeMillis,
-
-            zoneId =
-                timezone
+            currentTimeMillis,
+            timezone
         )
 
 
-    val gmtOffset =
+    val offset =
         getGmtOffset(
-
-            currentTimeMillis =
-                currentTimeMillis,
-
-            zoneId =
-                timezone
-        )
-
-
-    val isDay =
-        isDayTime(
-
-            currentTimeMillis =
-                currentTimeMillis,
-
-            timezone =
-                timezone
+            currentTimeMillis,
+            timezone
         )
 
 
@@ -747,7 +877,7 @@ fun YourLocationCard(
             Modifier.fillMaxWidth(),
 
         shape =
-            MaterialTheme.shapes.extraLarge,
+            RoundedCornerShape(24.dp),
 
         colors =
             CardDefaults.cardColors(
@@ -759,360 +889,145 @@ fun YourLocationCard(
             )
     ) {
 
+
         Column(
 
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
+                Modifier.padding(20.dp)
         ) {
 
 
             Row(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
 
                 verticalAlignment =
                     Alignment.CenterVertically
             ) {
 
-
                 Icon(
 
                     imageVector =
-                        Icons.Default.LocationOn,
+                        Icons.Default.MyLocation,
 
                     contentDescription =
-                        "Location",
-
-                    tint =
-                        MaterialTheme
-                            .colorScheme
-                            .primary
+                        "Current location"
                 )
 
 
                 Spacer(
                     modifier =
-                        Modifier.size(10.dp)
+                        Modifier.width(8.dp)
                 )
 
 
-                Column(
+                Text(
 
-                    modifier =
-                        Modifier.weight(1f)
-                ) {
+                    text =
+                        "Your Location",
 
-                    Text(
-
-                        text =
-                            "Your Location",
-
-                        fontSize =
-                            13.sp,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimaryContainer
-                    )
-
-
-                    Text(
-
-                        text =
-                            locationName,
-
-                        fontSize =
-                            20.sp,
-
-                        fontWeight =
-                            FontWeight.Bold
-                    )
-
-
-                    Text(
-
-                        text =
-                            countryName,
-
-                        fontSize =
-                            13.sp,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimaryContainer
-                    )
-                }
-
-
-                IconButton(
-
-                    onClick = {
-
-                        onRefresh()
-                    }
-
-                ) {
-
-                    Icon(
-
-                        imageVector =
-                            Icons.Default.Refresh,
-
-                        contentDescription =
-                            "Refresh location"
-                    )
-                }
+                    fontWeight =
+                        FontWeight.Bold
+                )
             }
 
 
             Spacer(
                 modifier =
-                    Modifier.height(16.dp)
+                    Modifier.height(12.dp)
             )
 
 
-            Row(
+            Text(
 
+                text =
+                    locationName,
+
+                fontSize =
+                    25.sp,
+
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+
+            Text(
+
+                text =
+                    countryName,
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onPrimaryContainer
+            )
+
+
+            Spacer(
                 modifier =
-                    Modifier.fillMaxWidth(),
-
-                verticalAlignment =
-                    Alignment.Bottom
-            ) {
+                    Modifier.height(12.dp)
+            )
 
 
-                Column(
+            Text(
 
-                    modifier =
-                        Modifier.weight(1f)
-                ) {
+                text =
+                    time,
 
-                    Text(
+                fontSize =
+                    40.sp,
 
-                        text =
-                            currentTime,
-
-                        fontSize =
-                            36.sp,
-
-                        fontWeight =
-                            FontWeight.Light
-                    )
+                fontWeight =
+                    FontWeight.Bold
+            )
 
 
-                    Text(
+            Text(
 
-                        text =
-                            timezone,
+                text =
+                    offset,
 
-                        fontSize =
-                            12.sp,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .onPrimaryContainer
-                    )
-                }
-
-
-                Column(
-
-                    horizontalAlignment =
-                        Alignment.End
-                ) {
-
-                    Text(
-
-                        text =
-                            if (isDay)
-                                "☀️ Day"
-                            else
-                                "🌙 Night",
-
-                        fontSize =
-                            13.sp,
-
-                        fontWeight =
-                            FontWeight.Medium
-                    )
-
-
-                    Text(
-
-                        text =
-                            gmtOffset,
-
-                        fontSize =
-                            12.sp,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .primary
-                    )
-                }
-            }
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onPrimaryContainer
+            )
         }
     }
 }
 
 
 /*
- * ============================================================
- * DIGITAL / ANALOG SELECTOR
- * ============================================================
- */
-
-@Composable
-fun ClockDisplaySelector(
-    isAnalog: Boolean,
-    onModeChange: (Boolean) -> Unit
-) {
-
-    Column(
-
-        modifier =
-            Modifier.fillMaxWidth()
-    ) {
-
-
-        Text(
-
-            text =
-                "Clock style",
-
-            fontSize =
-                14.sp,
-
-            fontWeight =
-                FontWeight.SemiBold,
-
-            color =
-                MaterialTheme
-                    .colorScheme
-                    .onBackground
-        )
-
-
-        Spacer(
-            modifier =
-                Modifier.height(8.dp)
-        )
-
-
-        SingleChoiceSegmentedButtonRow(
-
-            modifier =
-                Modifier.fillMaxWidth()
-        ) {
-
-
-            SegmentedButton(
-
-                selected =
-                    !isAnalog,
-
-                onClick = {
-
-                    onModeChange(false)
-                },
-
-                shape =
-                    SegmentedButtonDefaults
-                        .itemShape(
-
-                            index = 0,
-
-                            count = 2
-                        )
-
-            ) {
-
-                Text(
-                    text = "Digital"
-                )
-            }
-
-
-            SegmentedButton(
-
-                selected =
-                    isAnalog,
-
-                onClick = {
-
-                    onModeChange(true)
-                },
-
-                shape =
-                    SegmentedButtonDefaults
-                        .itemShape(
-
-                            index = 1,
-
-                            count = 2
-                        )
-
-            ) {
-
-                Text(
-                    text = "Analog"
-                )
-            }
-        }
-    }
-}
-
-
-/*
- * ============================================================
+ * =========================================================
  * CITY CLOCK CARD
- * ============================================================
+ * =========================================================
  */
 
 @Composable
 fun CityClockCard(
     city: ClockCity,
     currentTimeMillis: Long,
-    isAnalog: Boolean
+    isAnalog: Boolean,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
 ) {
 
-    val currentTime =
+    val time =
         getCurrentTime(
-
-            currentTimeMillis =
-                currentTimeMillis,
-
-            zoneId =
-                city.timezone
+            currentTimeMillis,
+            city.timezone
         )
 
 
-    val gmtOffset =
+    val offset =
         getGmtOffset(
-
-            currentTimeMillis =
-                currentTimeMillis,
-
-            zoneId =
-                city.timezone
+            currentTimeMillis,
+            city.timezone
         )
 
 
-    val isDay =
+    val day =
         isDayTime(
-
-            currentTimeMillis =
-                currentTimeMillis,
-
-            timezone =
-                city.timezone
+            currentTimeMillis,
+            city.timezone
         )
 
 
@@ -1122,35 +1037,20 @@ fun CityClockCard(
             Modifier.fillMaxWidth(),
 
         shape =
-            MaterialTheme.shapes.extraLarge,
-
-        colors =
-            CardDefaults.cardColors(
-
-                containerColor =
-                    MaterialTheme
-                        .colorScheme
-                        .surface
-            ),
-
-        elevation =
-            CardDefaults.cardElevation(
-
-                defaultElevation =
-                    2.dp
-            )
+            RoundedCornerShape(22.dp)
     ) {
 
 
         Column(
 
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
+                Modifier.padding(16.dp)
         ) {
 
 
+            /*
+             * CITY HEADER
+             */
             Row(
 
                 modifier =
@@ -1167,13 +1067,13 @@ fun CityClockCard(
                         city.flag,
 
                     fontSize =
-                        32.sp
+                        30.sp
                 )
 
 
                 Spacer(
                     modifier =
-                        Modifier.size(14.dp)
+                        Modifier.width(12.dp)
                 )
 
 
@@ -1189,10 +1089,10 @@ fun CityClockCard(
                             city.city,
 
                         fontSize =
-                            18.sp,
+                            19.sp,
 
                         fontWeight =
-                            FontWeight.SemiBold
+                            FontWeight.Bold
                     )
 
 
@@ -1207,51 +1107,44 @@ fun CityClockCard(
                         color =
                             MaterialTheme
                                 .colorScheme
-                                .onSurfaceVariant,
-
-                        maxLines =
-                            1,
-
-                        overflow =
-                            TextOverflow.Ellipsis
+                                .onSurfaceVariant
                     )
                 }
 
 
-                Column(
+                /*
+                 * ⭐ FAVORITE
+                 */
+                IconButton(
 
-                    horizontalAlignment =
-                        Alignment.End
+                    onClick =
+                        onToggleFavorite
                 ) {
 
-                    Text(
+                    Icon(
 
-                        text =
-                            if (isDay)
-                                "☀️ Day"
-                            else
-                                "🌙 Night",
+                        imageVector =
 
-                        fontSize =
-                            13.sp,
+                            if (isFavorite) {
 
-                        fontWeight =
-                            FontWeight.Medium
-                    )
+                                Icons.Default.Star
+
+                            } else {
+
+                                Icons.Default.StarBorder
+                            },
 
 
-                    Text(
+                        contentDescription =
 
-                        text =
-                            gmtOffset,
+                            if (isFavorite) {
 
-                        fontSize =
-                            12.sp,
+                                "Remove from favorites"
 
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .primary
+                            } else {
+
+                                "Add to favorites"
+                            }
                     )
                 }
             }
@@ -1259,21 +1152,24 @@ fun CityClockCard(
 
             Spacer(
                 modifier =
-                    Modifier.height(18.dp)
+                    Modifier.height(12.dp)
             )
 
 
-            Box(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                contentAlignment =
-                    Alignment.Center
-            ) {
+            /*
+             * CLOCK
+             */
+            if (isAnalog) {
 
 
-                if (isAnalog) {
+                Box(
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    contentAlignment =
+                        Alignment.Center
+                ) {
 
                     AnalogClock(
 
@@ -1283,45 +1179,94 @@ fun CityClockCard(
                         timezone =
                             city.timezone
                     )
-
-                } else {
-
-                    Text(
-
-                        text =
-                            currentTime,
-
-                        fontSize =
-                            42.sp,
-
-                        fontWeight =
-                            FontWeight.Light
-                    )
                 }
-            }
 
 
-            Spacer(
-                modifier =
-                    Modifier.height(14.dp)
-            )
+                Spacer(
+                    modifier =
+                        Modifier.height(10.dp)
+                )
 
-
-            if (isAnalog) {
 
                 Text(
 
                     text =
-                        currentTime,
+                        time,
 
                     modifier =
                         Modifier.fillMaxWidth(),
 
                     fontSize =
-                        16.sp,
+                        22.sp,
 
                     fontWeight =
-                        FontWeight.Medium,
+                        FontWeight.Bold
+                )
+
+
+            } else {
+
+
+                Text(
+
+                    text =
+                        time,
+
+                    fontSize =
+                        38.sp,
+
+                    fontWeight =
+                        FontWeight.Bold
+                )
+            }
+
+
+            Spacer(
+                modifier =
+                    Modifier.height(4.dp)
+            )
+
+
+            /*
+             * DAY / NIGHT + GMT
+             */
+            Row(
+
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                Text(
+
+                    text =
+
+                        if (day) {
+
+                            "☀️ Day"
+
+                        } else {
+
+                            "🌙 Night"
+                        },
+
+                    fontSize =
+                        13.sp
+                )
+
+
+                Spacer(
+                    modifier =
+                        Modifier.width(10.dp)
+                )
+
+
+                Text(
+
+                    text =
+                        offset,
+
+                    fontSize =
+                        13.sp,
 
                     color =
                         MaterialTheme
@@ -1329,15 +1274,81 @@ fun CityClockCard(
                             .onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+
+/*
+ * =========================================================
+ * EMPTY FAVORITES
+ * =========================================================
+ */
+
+@Composable
+fun EmptyFavoritesState() {
+
+    Card(
+
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+
+
+        Column(
+
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(30.dp),
+
+            horizontalAlignment =
+                Alignment.CenterHorizontally
+        ) {
+
+
+            Icon(
+
+                imageVector =
+                    Icons.Default.StarBorder,
+
+                contentDescription =
+                    null,
+
+                modifier =
+                    Modifier.size(48.dp)
+            )
+
+
+            Spacer(
+                modifier =
+                    Modifier.height(12.dp)
+            )
 
 
             Text(
 
                 text =
-                    city.timezone,
+                    "No favorites yet",
 
                 fontSize =
-                    12.sp,
+                    18.sp,
+
+                fontWeight =
+                    FontWeight.Bold
+            )
+
+
+            Spacer(
+                modifier =
+                    Modifier.height(4.dp)
+            )
+
+
+            Text(
+
+                text =
+                    "Tap the star on a city to add it here.",
 
                 color =
                     MaterialTheme
@@ -1345,36 +1356,5 @@ fun CityClockCard(
                         .onSurfaceVariant
             )
         }
-    }
-}
-
-
-/*
- * ============================================================
- * PREVIEW
- * ============================================================
- */
-
-@Preview(
-    showBackground = true
-)
-@Composable
-fun WorldClockPreview() {
-
-    WorldClockTheme {
-
-        WorldClockApp(
-
-            locationName =
-                "Jakarta",
-
-            countryName =
-                "Indonesia",
-
-            timezone =
-                "Asia/Jakarta",
-
-            onRefreshLocation = {}
-        )
     }
 }
