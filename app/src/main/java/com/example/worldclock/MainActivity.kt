@@ -329,15 +329,54 @@ fun WorldClockApp(
     onRefreshLocation: () -> Unit
 ) {
 
-    /*
-     * false = Home
-     * true  = Search City
-     */
-
     var showSearchScreen by remember {
         mutableStateOf(false)
     }
 
+    /*
+     * Daftar kota yang ditampilkan
+     * di World Clock.
+     *
+     * Default:
+     * Tokyo
+     * London
+     * New York
+     */
+    var selectedCities by remember {
+
+        mutableStateOf(
+
+            listOf(
+
+                ClockCity(
+                    city = "Tokyo",
+                    country = "Japan",
+                    flag = "🇯🇵",
+                    timezone = "Asia/Tokyo"
+                ),
+
+                ClockCity(
+                    city = "London",
+                    country = "United Kingdom",
+                    flag = "🇬🇧",
+                    timezone = "Europe/London"
+                ),
+
+                ClockCity(
+                    city = "New York",
+                    country = "United States",
+                    flag = "🇺🇸",
+                    timezone = "America/New_York"
+                )
+            )
+        )
+    }
+
+
+    /*
+     * Kalau sedang search,
+     * tampilkan Search City.
+     */
 
     if (showSearchScreen) {
 
@@ -351,13 +390,32 @@ fun WorldClockApp(
             onCitySelected = { city ->
 
                 /*
-                 * Step 9 nanti:
-                 *
-                 * city akan dimasukkan
-                 * ke World Clock.
-                 *
-                 * Untuk sekarang kembali
-                 * ke Home dulu.
+                 * Cek apakah kota sudah ada.
+                 */
+
+                val alreadyExists =
+                    selectedCities.any {
+
+                        it.timezone ==
+                                city.timezone
+                    }
+
+
+                /*
+                 * Kalau belum ada,
+                 * masukkan ke daftar.
+                 */
+
+                if (!alreadyExists) {
+
+                    selectedCities =
+                        selectedCities + city
+                }
+
+
+                /*
+                 * Setelah memilih kota,
+                 * kembali ke Home.
                  */
 
                 showSearchScreen = false
@@ -376,6 +434,9 @@ fun WorldClockApp(
 
             timezone =
                 timezone,
+
+            cities =
+                selectedCities,
 
             onRefreshLocation = {
 
@@ -396,12 +457,12 @@ fun WorldClockApp(
  * HOME SCREEN
  * ============================================================
  */
-
 @Composable
 fun WorldClockHomeScreen(
     locationName: String,
     countryName: String,
     timezone: String,
+    cities: List<ClockCity>,
     onRefreshLocation: () -> Unit,
     onAddCity: () -> Unit
 ) {
@@ -434,35 +495,6 @@ fun WorldClockHomeScreen(
             delay(1000)
         }
     }
-
-
-    /*
-     * DEFAULT WORLD CLOCKS
-     */
-
-    val cities = listOf(
-
-        ClockCity(
-            city = "Tokyo",
-            country = "Japan",
-            flag = "🇯🇵",
-            timezone = "Asia/Tokyo"
-        ),
-
-        ClockCity(
-            city = "London",
-            country = "United Kingdom",
-            flag = "🇬🇧",
-            timezone = "Europe/London"
-        ),
-
-        ClockCity(
-            city = "New York",
-            country = "United States",
-            flag = "🇺🇸",
-            timezone = "America/New_York"
-        )
-    )
 
 
     Scaffold(
@@ -618,13 +650,18 @@ fun WorldClockHomeScreen(
 
 
             /*
-             * CITY CARDS
+             * CITY LIST
              */
 
             items(
 
                 items =
-                    cities
+                    cities,
+
+                key = {
+
+                    it.timezone
+                }
 
             ) { city ->
 
@@ -642,6 +679,10 @@ fun WorldClockHomeScreen(
             }
 
 
+            /*
+             * Bottom spacing
+             */
+
             item {
 
                 Spacer(
@@ -652,8 +693,6 @@ fun WorldClockHomeScreen(
         }
     }
 }
-
-
 /*
  * ============================================================
  * YOUR LOCATION CARD
