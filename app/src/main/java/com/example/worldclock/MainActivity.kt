@@ -58,6 +58,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -302,16 +305,79 @@ fun WorldClockApp(
 ) {
 
     /*
-     * Apakah halaman Search sedang dibuka?
+     * =====================================================
+     * ROOM DATABASE
+     * =====================================================
      */
+
+    val context = LocalContext.current
+
+    val database = remember {
+        AppDatabase.getInstance(context)
+    }
+
+    val favoriteDao = database.favoriteCityDao()
+
+    val scope = rememberCoroutineScope()
+
+
+    /*
+     * =====================================================
+     * FAVORITE CITIES
+     * =====================================================
+     *
+     * Sekarang favorite hanya dibuat SATU KALI.
+     *
+     * Data favorite datang dari Room Database.
+     */
+
+    var favoriteCities by remember {
+        mutableStateOf(setOf<String>())
+    }
+
+
+    /*
+     * Dengarkan perubahan isi database.
+     *
+     * Kalau favorite ditambah / dihapus,
+     * Room mengirim data terbaru ke sini.
+     */
+
+    LaunchedEffect(Unit) {
+
+        favoriteDao
+            .getAllFavorites()
+            .collect { favorites ->
+
+                favoriteCities =
+                    favorites
+                        .map {
+                            it.timezone
+                        }
+                        .toSet()
+            }
+    }
+
+
+    /*
+     * =====================================================
+     * SEARCH SCREEN
+     * =====================================================
+     */
+
     var showSearchScreen by remember {
         mutableStateOf(false)
     }
 
 
     /*
-     * Daftar kota yang sedang dipilih user.
+     * =====================================================
+     * SELECTED CITIES
+     * =====================================================
+     *
+     * Daftar kota yang sedang ditampilkan di Home.
      */
+
     var selectedCities by remember {
 
         mutableStateOf(
@@ -344,19 +410,11 @@ fun WorldClockApp(
 
 
     /*
-     * Menyimpan timezone kota yang dijadikan favorite.
+     * =====================================================
+     * SEARCH CITY
+     * =====================================================
      */
-    var favoriteCities by remember {
 
-        mutableStateOf(
-            setOf<String>()
-        )
-    }
-
-
-    /*
-     * Kalau user sedang berada di Search City.
-     */
     if (showSearchScreen) {
 
         SearchCityScreen(
@@ -372,6 +430,7 @@ fun WorldClockApp(
                 /*
                  * Cek apakah kota sudah ada.
                  */
+
                 val alreadyExists =
                     selectedCities.any {
 
@@ -382,8 +441,9 @@ fun WorldClockApp(
 
                 /*
                  * Kalau belum ada,
-                 * masukkan ke daftar.
+                 * tambahkan ke daftar.
                  */
+
                 if (!alreadyExists) {
 
                     selectedCities =
@@ -392,9 +452,9 @@ fun WorldClockApp(
 
 
                 /*
-                 * Setelah pilih kota,
-                 * kembali ke Home.
+                 * Kembali ke Home.
                  */
+
                 showSearchScreen = false
             }
         )
@@ -402,59 +462,113 @@ fun WorldClockApp(
 
     } else {
 
+
         /*
-         * Home Screen.
+         * =================================================
+         * HOME SCREEN
+         * =================================================
          */
+
         WorldClockHomeScreen(
 
-            locationName = locationName,
+            locationName =
+                locationName,
 
-            countryName = countryName,
+            countryName =
+                countryName,
 
-            timezone = timezone,
+            timezone =
+                timezone,
 
-            cities = selectedCities,
+            cities =
+                selectedCities,
 
-            favoriteCities = favoriteCities,
+            /*
+             * Favorite sekarang berasal dari Room.
+             */
+
+            favoriteCities =
+                favoriteCities,
 
 
             /*
-             * Ketika tombol ⭐ ditekan.
+             * =================================================
+             * TOGGLE FAVORITE
+             * =================================================
              */
+
             onToggleFavorite = { city ->
 
-                favoriteCities =
+                /*
+                 * Cek apakah kota ini sudah favorite.
+                 */
 
-                    if (
-                        favoriteCities.contains(
-                            city.timezone
-                        )
-                    ) {
+                val isFavorite =
+                    favoriteCities.contains(
+                        city.timezone
+                    )
+
+
+                /*
+                 * Jalankan operasi database
+                 * di coroutine.
+                 */
+
+                scope.launch {
+
+                    if (isFavorite) {
 
                         /*
-                         * Kalau sudah favorite,
-                         * hapus dari favorite.
+                         * Sudah favorite
+                         * → hapus dari database.
                          */
-                        favoriteCities -
-                                city.timezone
+
+                        favoriteDao.deleteFavorite(
+                            city.timezone
+                        )
 
                     } else {
 
                         /*
-                         * Kalau belum favorite,
-                         * tambahkan.
+                         * Belum favorite
+                         * → simpan ke database.
                          */
-                        favoriteCities +
-                                city.timezone
+
+                        favoriteDao.insertFavorite(
+
+                            FavoriteCity(
+
+                                timezone =
+                                    city.timezone,
+
+                                city =
+                                    city.city,
+
+                                country =
+                                    city.country,
+
+                                flag =
+                                    city.flag
+                            )
+                        )
                     }
+                }
             },
 
+
+            /*
+             * Refresh location
+             */
 
             onRefreshLocation = {
 
                 onRefreshLocation()
             },
 
+
+            /*
+             * Add city
+             */
 
             onAddCity = {
 
