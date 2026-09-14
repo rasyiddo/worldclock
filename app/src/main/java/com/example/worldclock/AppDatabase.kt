@@ -1,10 +1,12 @@
 package com.example.worldclock
 
 import android.content.Context
+
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
@@ -21,10 +23,19 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun savedCityDao(): SavedCityDao
 
+
     companion object {
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
+
+
+        /*
+         * =====================================================
+         * DATABASE MIGRATION
+         * Version 1 → Version 2
+         * =====================================================
+         */
 
         private val MIGRATION_1_2 =
             object : Migration(1, 2) {
@@ -46,6 +57,13 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 }
             }
+
+
+        /*
+         * =====================================================
+         * GET DATABASE INSTANCE
+         * =====================================================
+         */
 
         fun getInstance(
             context: Context

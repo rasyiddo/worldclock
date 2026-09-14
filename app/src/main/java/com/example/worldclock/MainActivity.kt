@@ -76,6 +76,12 @@ import kotlinx.coroutines.launch
 import java.util.TimeZone
 
 
+/*
+ * =========================================================
+ * MAIN ACTIVITY
+ * =========================================================
+ */
+
 class MainActivity : ComponentActivity() {
 
     private var locationName by mutableStateOf(
@@ -92,9 +98,9 @@ class MainActivity : ComponentActivity() {
 
 
     /*
-     * =========================================================
+     * =====================================================
      * LOCATION PERMISSION
-     * =========================================================
+     * =====================================================
      */
 
     private val locationPermissionLauncher =
@@ -132,9 +138,9 @@ class MainActivity : ComponentActivity() {
 
 
     /*
-     * =========================================================
+     * =====================================================
      * ON CREATE
-     * =========================================================
+     * =====================================================
      */
 
     override fun onCreate(
@@ -171,9 +177,9 @@ class MainActivity : ComponentActivity() {
 
 
     /*
-     * =========================================================
-     * REQUEST LOCATION
-     * =========================================================
+     * =====================================================
+     * REQUEST LOCATION PERMISSION
+     * =====================================================
      */
 
     private fun requestLocationPermission() {
@@ -191,9 +197,9 @@ class MainActivity : ComponentActivity() {
 
 
     /*
-     * =========================================================
+     * =====================================================
      * DETECT LOCATION
-     * =========================================================
+     * =====================================================
      */
 
     private fun detectLocation() {
@@ -286,9 +292,9 @@ class MainActivity : ComponentActivity() {
 
 
     /*
-     * =========================================================
+     * =====================================================
      * GEOCODER
-     * =========================================================
+     * =====================================================
      */
 
     private fun getAddressFromLocation(
@@ -433,13 +439,8 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * FAVORITE TIMEZONE SET
+     * FAVORITE DATA
      * =====================================================
-     *
-     * Digunakan untuk menentukan:
-     *
-     * ⭐ = favorite
-     * ☆ = bukan favorite
      */
 
     var favoriteCities by remember {
@@ -449,15 +450,6 @@ fun WorldClockApp(
         )
     }
 
-
-    /*
-     * =====================================================
-     * FAVORITE CITY LIST
-     * =====================================================
-     *
-     * Digunakan untuk menampilkan kota
-     * pada tab Favorites.
-     */
 
     var favoriteCityList by remember {
 
@@ -469,7 +461,7 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * READ FAVORITES FROM ROOM
+     * READ FAVORITES
      * =====================================================
      */
 
@@ -479,10 +471,6 @@ fun WorldClockApp(
             .getAllFavorites()
             .collect { favorites ->
 
-                /*
-                 * Simpan timezone favorite.
-                 */
-
                 favoriteCities =
                     favorites
                         .map {
@@ -490,11 +478,6 @@ fun WorldClockApp(
                         }
                         .toSet()
 
-
-                /*
-                 * Ubah FavoriteCity
-                 * menjadi ClockCity.
-                 */
 
                 favoriteCityList =
                     favorites.map { favorite ->
@@ -520,11 +503,8 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SEARCH SCREEN
+     * SEARCH SCREEN STATE
      * =====================================================
-     *
-     * false = Home
-     * true  = Search
      */
 
     var showSearchScreen by remember {
@@ -535,10 +515,8 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SAVED CITY LIST
+     * SAVED CITIES
      * =====================================================
-     *
-     * Kota yang tampil di All Cities.
      */
 
     var selectedCities by remember {
@@ -551,7 +529,7 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * READ SAVED CITIES FROM ROOM
+     * READ SAVED CITIES
      * =====================================================
      */
 
@@ -562,8 +540,9 @@ fun WorldClockApp(
             .collect { savedCities ->
 
                 /*
-                 * Kalau database masih kosong,
-                 * masukkan kota default.
+                 * Database kosong:
+                 *
+                 * Masukkan kota default.
                  */
 
                 if (
@@ -594,8 +573,9 @@ fun WorldClockApp(
                 } else {
 
                     /*
-                     * Kalau database sudah punya
-                     * data, tampilkan semuanya.
+                     * Database sudah punya data.
+                     *
+                     * Tampilkan data tersebut.
                      */
 
                     selectedCities =
@@ -623,19 +603,13 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SELECT SCREEN
+     * SEARCH SCREEN / HOME
      * =====================================================
      */
 
     if (
         showSearchScreen
     ) {
-
-        /*
-         * =================================================
-         * SEARCH CITY
-         * =================================================
-         */
 
         SearchCityScreen(
 
@@ -649,8 +623,7 @@ fun WorldClockApp(
             onCitySelected = { city ->
 
                 /*
-                 * Cek apakah kota sudah ada
-                 * di All Cities.
+                 * Cek apakah kota sudah ada.
                  */
 
                 val alreadyExists =
@@ -706,12 +679,6 @@ fun WorldClockApp(
 
     } else {
 
-        /*
-         * =================================================
-         * HOME
-         * =================================================
-         */
-
         WorldClockHomeScreen(
 
             locationName =
@@ -753,20 +720,12 @@ fun WorldClockApp(
                         isFavorite
                     ) {
 
-                        /*
-                         * Hapus favorite.
-                         */
-
                         favoriteDao
                             .deleteFavorite(
                                 city.timezone
                             )
 
                     } else {
-
-                        /*
-                         * Simpan favorite.
-                         */
 
                         favoriteDao
                             .insertFavorite(
@@ -860,8 +819,8 @@ fun WorldClockHomeScreen(
      * CLOCK MODE
      * =====================================================
      *
-     * false = digital
-     * true  = analog
+     * false = Digital
+     * true  = Analog
      */
 
     var isAnalog by remember {
@@ -872,7 +831,7 @@ fun WorldClockHomeScreen(
 
     /*
      * =====================================================
-     * TAB
+     * SELECTED TAB
      * =====================================================
      *
      * 0 = All Cities
@@ -887,7 +846,7 @@ fun WorldClockHomeScreen(
 
     /*
      * =====================================================
-     * UPDATE CLOCK
+     * UPDATE CLOCK EVERY SECOND
      * =====================================================
      */
 
@@ -917,19 +876,9 @@ fun WorldClockHomeScreen(
             selectedTab == 0
         ) {
 
-            /*
-             * All Cities
-             */
-
             cities
 
         } else {
-
-            /*
-             * Favorites
-             *
-             * LANGSUNG dari Room.
-             */
 
             favoriteCityList
         }
@@ -1001,12 +950,6 @@ fun WorldClockHomeScreen(
         },
 
 
-        /*
-         * =================================================
-         * FLOATING BUTTON
-         * =================================================
-         */
-
         floatingActionButton = {
 
             FloatingActionButton(
@@ -1029,12 +972,6 @@ fun WorldClockHomeScreen(
 
     ) { innerPadding ->
 
-
-        /*
-         * =================================================
-         * MAIN LIST
-         * =================================================
-         */
 
         LazyColumn(
 
@@ -1062,6 +999,7 @@ fun WorldClockHomeScreen(
             item {
 
                 Spacer(
+
                     modifier =
                         Modifier.height(4.dp)
                 )
@@ -1120,7 +1058,7 @@ fun WorldClockHomeScreen(
                     Row {
 
                         /*
-                         * Digital
+                         * DIGITAL
                          */
 
                         IconButton(
@@ -1145,7 +1083,7 @@ fun WorldClockHomeScreen(
 
 
                         /*
-                         * Analog
+                         * ANALOG
                          */
 
                         IconButton(
@@ -1174,7 +1112,7 @@ fun WorldClockHomeScreen(
 
             /*
              * =================================================
-             * ALL / FAVORITES
+             * TABS
              * =================================================
              */
 
@@ -1290,10 +1228,6 @@ fun WorldClockHomeScreen(
                 }
             }
 
-
-            /*
-             * Space bawah
-             */
 
             item {
 
@@ -1511,6 +1445,7 @@ fun CityClockCard(
                 Modifier.padding(16.dp)
         ) {
 
+
             /*
              * =================================================
              * CITY HEADER
@@ -1578,9 +1513,7 @@ fun CityClockCard(
 
 
                 /*
-                 * =================================================
-                 * FAVORITE BUTTON
-                 * =================================================
+                 * FAVORITE
                  */
 
                 IconButton(
@@ -1704,7 +1637,7 @@ fun CityClockCard(
 
             /*
              * =================================================
-             * DAY / NIGHT + GMT
+             * DAY / NIGHT
              * =================================================
              */
 
