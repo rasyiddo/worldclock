@@ -296,6 +296,12 @@ class MainActivity : ComponentActivity() {
  * =========================================================
  */
 
+/*
+ * =========================================================
+ * WORLD CLOCK APP
+ * =========================================================
+ */
+
 @Composable
 fun WorldClockApp(
     locationName: String,
@@ -306,11 +312,18 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * ROOM DATABASE
+     * CONTEXT
      * =====================================================
      */
 
     val context = LocalContext.current
+
+
+    /*
+     * =====================================================
+     * ROOM DATABASE
+     * =====================================================
+     */
 
     val database = remember {
         AppDatabase.getInstance(context)
@@ -323,12 +336,11 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * FAVORITE CITIES
+     * FAVORITE DATA
      * =====================================================
      *
-     * Sekarang favorite hanya dibuat SATU KALI.
-     *
-     * Data favorite datang dari Room Database.
+     * favoriteCities:
+     * dipakai untuk menentukan bintang ⭐ / ☆
      */
 
     var favoriteCities by remember {
@@ -337,10 +349,20 @@ fun WorldClockApp(
 
 
     /*
-     * Dengarkan perubahan isi database.
-     *
-     * Kalau favorite ditambah / dihapus,
-     * Room mengirim data terbaru ke sini.
+     * favoriteCityList:
+     * dipakai untuk menampilkan kota
+     * pada tab Favorites.
+     */
+
+    var favoriteCityList by remember {
+        mutableStateOf(listOf<ClockCity>())
+    }
+
+
+    /*
+     * =====================================================
+     * AMBIL FAVORITE DARI ROOM
+     * =====================================================
      */
 
     LaunchedEffect(Unit) {
@@ -349,20 +371,53 @@ fun WorldClockApp(
             .getAllFavorites()
             .collect { favorites ->
 
+                /*
+                 * Simpan timezone favorite
+                 * untuk kebutuhan ⭐ / ☆
+                 */
+
                 favoriteCities =
                     favorites
                         .map {
                             it.timezone
                         }
                         .toSet()
+
+
+                /*
+                 * Ubah FavoriteCity
+                 * menjadi ClockCity
+                 * untuk ditampilkan di UI.
+                 */
+
+                favoriteCityList =
+                    favorites.map { favorite ->
+
+                        ClockCity(
+                            city =
+                                favorite.city,
+
+                            country =
+                                favorite.country,
+
+                            flag =
+                                favorite.flag,
+
+                            timezone =
+                                favorite.timezone
+                        )
+                    }
             }
     }
 
 
     /*
      * =====================================================
-     * SEARCH SCREEN
+     * SEARCH SCREEN STATE
      * =====================================================
+     *
+     * false = Home
+     * true  = Search City
      */
 
     var showSearchScreen by remember {
@@ -375,7 +430,7 @@ fun WorldClockApp(
      * SELECTED CITIES
      * =====================================================
      *
-     * Daftar kota yang sedang ditampilkan di Home.
+     * Kota yang tampil pada All Cities.
      */
 
     var selectedCities by remember {
@@ -411,11 +466,17 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SEARCH CITY
+     * TENTUKAN SCREEN
      * =====================================================
      */
 
     if (showSearchScreen) {
+
+        /*
+         * =================================================
+         * SEARCH CITY
+         * =================================================
+         */
 
         SearchCityScreen(
 
@@ -428,7 +489,8 @@ fun WorldClockApp(
             onCitySelected = { city ->
 
                 /*
-                 * Cek apakah kota sudah ada.
+                 * Cek apakah kota sudah ada
+                 * pada daftar All Cities.
                  */
 
                 val alreadyExists =
@@ -441,7 +503,7 @@ fun WorldClockApp(
 
                 /*
                  * Kalau belum ada,
-                 * tambahkan ke daftar.
+                 * tambahkan kota.
                  */
 
                 if (!alreadyExists) {
@@ -461,7 +523,6 @@ fun WorldClockApp(
 
 
     } else {
-
 
         /*
          * =================================================
@@ -484,24 +545,29 @@ fun WorldClockApp(
                 selectedCities,
 
             /*
-             * Favorite sekarang berasal dari Room.
+             * Data timezone favorite
+             * untuk bintang ⭐.
              */
 
             favoriteCities =
                 favoriteCities,
 
+            /*
+             * Data kota favorite lengkap
+             * untuk tab Favorites.
+             */
+
+            favoriteCityList =
+                favoriteCityList,
+
 
             /*
              * =================================================
-             * TOGGLE FAVORITE
+             * FAVORITE BUTTON
              * =================================================
              */
 
             onToggleFavorite = { city ->
-
-                /*
-                 * Cek apakah kota ini sudah favorite.
-                 */
 
                 val isFavorite =
                     favoriteCities.contains(
@@ -509,18 +575,12 @@ fun WorldClockApp(
                     )
 
 
-                /*
-                 * Jalankan operasi database
-                 * di coroutine.
-                 */
-
                 scope.launch {
 
                     if (isFavorite) {
 
                         /*
-                         * Sudah favorite
-                         * → hapus dari database.
+                         * Hapus dari Room.
                          */
 
                         favoriteDao.deleteFavorite(
@@ -530,8 +590,7 @@ fun WorldClockApp(
                     } else {
 
                         /*
-                         * Belum favorite
-                         * → simpan ke database.
+                         * Simpan ke Room.
                          */
 
                         favoriteDao.insertFavorite(
@@ -557,7 +616,9 @@ fun WorldClockApp(
 
 
             /*
-             * Refresh location
+             * =================================================
+             * REFRESH LOCATION
+             * =================================================
              */
 
             onRefreshLocation = {
@@ -567,7 +628,9 @@ fun WorldClockApp(
 
 
             /*
-             * Add city
+             * =================================================
+             * ADD CITY
+             * =================================================
              */
 
             onAddCity = {
@@ -593,6 +656,7 @@ fun WorldClockHomeScreen(
     timezone: String,
     cities: List<ClockCity>,
     favoriteCities: Set<String>,
+    favoriteCityList: List<ClockCity>,
     onToggleFavorite: (ClockCity) -> Unit,
     onRefreshLocation: () -> Unit,
     onAddCity: () -> Unit
@@ -648,19 +712,13 @@ fun WorldClockHomeScreen(
      * Tentukan kota mana yang ditampilkan.
      */
     val visibleCities =
-
         if (selectedTab == 0) {
 
             cities
 
         } else {
 
-            cities.filter {
-
-                favoriteCities.contains(
-                    it.timezone
-                )
-            }
+            favoriteCityList
         }
 
 
