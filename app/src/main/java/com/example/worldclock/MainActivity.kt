@@ -3,6 +3,7 @@ package com.example.worldclock
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.SharedPreferences
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
@@ -32,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MyLocation
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +53,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 
 import androidx.compose.runtime.Composable
@@ -149,9 +153,33 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
+        val preferences =
+            getSharedPreferences(
+                "worldclock_preferences",
+                Context.MODE_PRIVATE
+            )
+
+
+        val savedDarkMode =
+            preferences.getBoolean(
+                "dark_mode",
+                false
+            )
+
+
         setContent {
 
-            WorldClockTheme {
+            var darkMode by remember {
+
+                mutableStateOf(
+                    savedDarkMode
+                )
+            }
+
+
+            WorldClockTheme(
+                darkTheme = darkMode
+            ) {
 
                 WorldClockApp(
 
@@ -163,6 +191,24 @@ class MainActivity : ComponentActivity() {
 
                     timezone =
                         detectedTimezone,
+
+                    darkMode =
+                        darkMode,
+
+                    onToggleTheme = {
+
+                        darkMode =
+                            !darkMode
+
+
+                        preferences
+                            .edit()
+                            .putBoolean(
+                                "dark_mode",
+                                darkMode
+                            )
+                            .apply()
+                    },
 
                     onRefreshLocation = {
 
@@ -178,7 +224,7 @@ class MainActivity : ComponentActivity() {
 
     /*
      * =====================================================
-     * REQUEST LOCATION PERMISSION
+     * REQUEST LOCATION
      * =====================================================
      */
 
@@ -357,37 +403,6 @@ class MainActivity : ComponentActivity() {
 
 /*
  * =========================================================
- * DEFAULT WORLD CITIES
- * =========================================================
- */
-
-val defaultWorldCities = listOf(
-
-    ClockCity(
-        city = "Tokyo",
-        country = "Japan",
-        flag = "🇯🇵",
-        timezone = "Asia/Tokyo"
-    ),
-
-    ClockCity(
-        city = "London",
-        country = "United Kingdom",
-        flag = "🇬🇧",
-        timezone = "Europe/London"
-    ),
-
-    ClockCity(
-        city = "New York",
-        country = "United States",
-        flag = "🇺🇸",
-        timezone = "America/New_York"
-    )
-)
-
-
-/*
- * =========================================================
  * WORLD CLOCK APP
  * =========================================================
  */
@@ -397,6 +412,8 @@ fun WorldClockApp(
     locationName: String,
     countryName: String,
     timezone: String,
+    darkMode: Boolean,
+    onToggleTheme: () -> Unit,
     onRefreshLocation: () -> Unit
 ) {
 
@@ -412,7 +429,7 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * ROOM DATABASE
+     * DATABASE
      * =====================================================
      */
 
@@ -439,7 +456,7 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * FAVORITE DATA
+     * FAVORITES
      * =====================================================
      */
 
@@ -503,7 +520,7 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SEARCH SCREEN STATE
+     * SEARCH STATE
      * =====================================================
      */
 
@@ -539,71 +556,31 @@ fun WorldClockApp(
             .getAllSavedCities()
             .collect { savedCities ->
 
-                /*
-                 * Database kosong:
-                 *
-                 * Masukkan kota default.
-                 */
+                selectedCities =
+                    savedCities.map { savedCity ->
 
-                if (
-                    savedCities.isEmpty()
-                ) {
+                        ClockCity(
 
-                    defaultWorldCities.forEach { city ->
+                            city =
+                                savedCity.city,
 
-                        savedCityDao.insertSavedCity(
+                            country =
+                                savedCity.country,
 
-                            SavedCity(
+                            flag =
+                                savedCity.flag,
 
-                                timezone =
-                                    city.timezone,
-
-                                city =
-                                    city.city,
-
-                                country =
-                                    city.country,
-
-                                flag =
-                                    city.flag
-                            )
+                            timezone =
+                                savedCity.timezone
                         )
                     }
-
-                } else {
-
-                    /*
-                     * Database sudah punya data.
-                     *
-                     * Tampilkan data tersebut.
-                     */
-
-                    selectedCities =
-                        savedCities.map { savedCity ->
-
-                            ClockCity(
-
-                                city =
-                                    savedCity.city,
-
-                                country =
-                                    savedCity.country,
-
-                                flag =
-                                    savedCity.flag,
-
-                                timezone =
-                                    savedCity.timezone
-                            )
-                        }
-                }
             }
     }
 
 
     /*
      * =====================================================
-     * SEARCH SCREEN / HOME
+     * SEARCH / HOME
      * =====================================================
      */
 
@@ -622,10 +599,6 @@ fun WorldClockApp(
 
             onCitySelected = { city ->
 
-                /*
-                 * Cek apakah kota sudah ada.
-                 */
-
                 val alreadyExists =
                     selectedCities.any {
 
@@ -633,11 +606,6 @@ fun WorldClockApp(
                                 city.timezone
                     }
 
-
-                /*
-                 * Kalau belum ada,
-                 * simpan ke Room.
-                 */
 
                 if (
                     !alreadyExists
@@ -667,10 +635,6 @@ fun WorldClockApp(
                 }
 
 
-                /*
-                 * Kembali ke Home.
-                 */
-
                 showSearchScreen =
                     false
             }
@@ -699,11 +663,15 @@ fun WorldClockApp(
             favoriteCityList =
                 favoriteCityList,
 
+            darkMode =
+                darkMode,
+
+            onToggleTheme =
+                onToggleTheme,
+
 
             /*
-             * =================================================
-             * TOGGLE FAVORITE
-             * =================================================
+             * FAVORITE
              */
 
             onToggleFavorite = { city ->
@@ -751,9 +719,29 @@ fun WorldClockApp(
 
 
             /*
-             * =================================================
-             * REFRESH LOCATION
-             * =================================================
+             * DELETE CITY
+             */
+
+            onDeleteCity = { city ->
+
+                scope.launch {
+
+                    savedCityDao
+                        .deleteSavedCity(
+                            city.timezone
+                        )
+
+
+                    favoriteDao
+                        .deleteFavorite(
+                            city.timezone
+                        )
+                }
+            },
+
+
+            /*
+             * REFRESH
              */
 
             onRefreshLocation = {
@@ -763,9 +751,7 @@ fun WorldClockApp(
 
 
             /*
-             * =================================================
              * ADD CITY
-             * =================================================
              */
 
             onAddCity = {
@@ -795,7 +781,10 @@ fun WorldClockHomeScreen(
     cities: List<ClockCity>,
     favoriteCities: Set<String>,
     favoriteCityList: List<ClockCity>,
+    darkMode: Boolean,
+    onToggleTheme: () -> Unit,
     onToggleFavorite: (ClockCity) -> Unit,
+    onDeleteCity: (ClockCity) -> Unit,
     onRefreshLocation: () -> Unit,
     onAddCity: () -> Unit
 ) {
@@ -818,9 +807,6 @@ fun WorldClockHomeScreen(
      * =====================================================
      * CLOCK MODE
      * =====================================================
-     *
-     * false = Digital
-     * true  = Analog
      */
 
     var isAnalog by remember {
@@ -831,11 +817,8 @@ fun WorldClockHomeScreen(
 
     /*
      * =====================================================
-     * SELECTED TAB
+     * TAB
      * =====================================================
-     *
-     * 0 = All Cities
-     * 1 = Favorites
      */
 
     var selectedTab by remember {
@@ -846,7 +829,7 @@ fun WorldClockHomeScreen(
 
     /*
      * =====================================================
-     * UPDATE CLOCK EVERY SECOND
+     * UPDATE CLOCK
      * =====================================================
      */
 
@@ -929,6 +912,52 @@ fun WorldClockHomeScreen(
 
                 actions = {
 
+                    /*
+                     * THEME BUTTON
+                     */
+
+                    IconButton(
+
+                        onClick =
+                            onToggleTheme
+
+                    ) {
+
+                        Icon(
+
+                            imageVector =
+
+                                if (
+                                    darkMode
+                                ) {
+
+                                    Icons.Default.LightMode
+
+                                } else {
+
+                                    Icons.Default.DarkMode
+                                },
+
+                            contentDescription =
+
+                                if (
+                                    darkMode
+                                ) {
+
+                                    "Switch to light mode"
+
+                                } else {
+
+                                    "Switch to dark mode"
+                                }
+                        )
+                    }
+
+
+                    /*
+                     * REFRESH
+                     */
+
                     IconButton(
 
                         onClick =
@@ -949,6 +978,10 @@ fun WorldClockHomeScreen(
             )
         },
 
+
+        /*
+         * ADD CITY
+         */
 
         floatingActionButton = {
 
@@ -1055,54 +1088,82 @@ fun WorldClockHomeScreen(
                     )
 
 
+                    /*
+                     * DIGITAL / ANALOG
+                     */
+
                     Row {
 
-                        /*
-                         * DIGITAL
-                         */
-
-                        IconButton(
+                        TextButton(
 
                             onClick = {
 
                                 isAnalog =
                                     false
-                            }
+                            },
 
+                            colors =
+                                ButtonDefaults
+                                    .textButtonColors(
+
+                                        contentColor =
+
+                                            if (
+                                                !isAnalog
+                                            ) {
+
+                                                MaterialTheme
+                                                    .colorScheme
+                                                    .primary
+
+                                            } else {
+
+                                                MaterialTheme
+                                                    .colorScheme
+                                                    .onSurfaceVariant
+                                            }
+                                    )
                         ) {
 
-                            Icon(
-
-                                imageVector =
-                                    Icons.Default.LightMode,
-
-                                contentDescription =
-                                    "Digital clock"
+                            Text(
+                                "Digital"
                             )
                         }
 
 
-                        /*
-                         * ANALOG
-                         */
-
-                        IconButton(
+                        TextButton(
 
                             onClick = {
 
                                 isAnalog =
                                     true
-                            }
+                            },
 
+                            colors =
+                                ButtonDefaults
+                                    .textButtonColors(
+
+                                        contentColor =
+
+                                            if (
+                                                isAnalog
+                                            ) {
+
+                                                MaterialTheme
+                                                    .colorScheme
+                                                    .primary
+
+                                            } else {
+
+                                                MaterialTheme
+                                                    .colorScheme
+                                                    .onSurfaceVariant
+                                            }
+                                    )
                         ) {
 
-                            Icon(
-
-                                imageVector =
-                                    Icons.Default.DarkMode,
-
-                                contentDescription =
-                                    "Analog clock"
+                            Text(
+                                "Analog"
                             )
                         }
                     }
@@ -1122,7 +1183,6 @@ fun WorldClockHomeScreen(
 
                     selectedTabIndex =
                         selectedTab
-
                 ) {
 
                     Tab(
@@ -1179,15 +1239,16 @@ fun WorldClockHomeScreen(
 
                 item {
 
-                    EmptyFavoritesState()
+                    EmptyCitiesState(
+                        isFavorites =
+                            selectedTab == 1
+                    )
                 }
 
             } else {
 
                 /*
-                 * =================================================
                  * CITY LIST
-                 * =================================================
                  */
 
                 items(
@@ -1221,6 +1282,13 @@ fun WorldClockHomeScreen(
                         onToggleFavorite = {
 
                             onToggleFavorite(
+                                city
+                            )
+                        },
+
+                        onDeleteCity = {
+
+                            onDeleteCity(
                                 city
                             )
                         }
@@ -1406,7 +1474,8 @@ fun CityClockCard(
     currentTimeMillis: Long,
     isAnalog: Boolean,
     isFavorite: Boolean,
-    onToggleFavorite: () -> Unit
+    onToggleFavorite: () -> Unit,
+    onDeleteCity: () -> Unit
 ) {
 
     val time =
@@ -1445,11 +1514,8 @@ fun CityClockCard(
                 Modifier.padding(16.dp)
         ) {
 
-
             /*
-             * =================================================
              * CITY HEADER
-             * =================================================
              */
 
             Row(
@@ -1553,6 +1619,28 @@ fun CityClockCard(
                             }
                     )
                 }
+
+
+                /*
+                 * DELETE
+                 */
+
+                IconButton(
+
+                    onClick =
+                        onDeleteCity
+
+                ) {
+
+                    Icon(
+
+                        imageVector =
+                            Icons.Default.Delete,
+
+                        contentDescription =
+                            "Delete city"
+                    )
+                }
             }
 
 
@@ -1563,9 +1651,7 @@ fun CityClockCard(
 
 
             /*
-             * =================================================
              * CLOCK
-             * =================================================
              */
 
             if (
@@ -1636,9 +1722,7 @@ fun CityClockCard(
 
 
             /*
-             * =================================================
              * DAY / NIGHT
-             * =================================================
              */
 
             Row(
@@ -1694,12 +1778,14 @@ fun CityClockCard(
 
 /*
  * =========================================================
- * EMPTY FAVORITES
+ * EMPTY CITY STATE
  * =========================================================
  */
 
 @Composable
-fun EmptyFavoritesState() {
+fun EmptyCitiesState(
+    isFavorites: Boolean
+) {
 
     Card(
 
@@ -1740,7 +1826,17 @@ fun EmptyFavoritesState() {
             Text(
 
                 text =
-                    "No favorites yet",
+
+                    if (
+                        isFavorites
+                    ) {
+
+                        "No favorites yet"
+
+                    } else {
+
+                        "No cities yet"
+                    },
 
                 fontSize =
                     18.sp,
@@ -1759,7 +1855,17 @@ fun EmptyFavoritesState() {
             Text(
 
                 text =
-                    "Tap the star on a city to add it here.",
+
+                    if (
+                        isFavorites
+                    ) {
+
+                        "Tap the star on a city to add it here."
+
+                    } else {
+
+                        "Tap + to add a city."
+                    },
 
                 color =
                     MaterialTheme

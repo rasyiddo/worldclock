@@ -1,66 +1,97 @@
 package com.example.worldclock.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
-private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF4F46E5),
-    onPrimary = Color.White,
+/*
+ * =========================================================
+ * LIGHT COLOR SCHEME
+ * =========================================================
+ */
 
-    primaryContainer = Color(0xFFE0E7FF),
-    onPrimaryContainer = Color(0xFF1E1B4B),
+private val LightColors = lightColorScheme(
+    primary = androidx.compose.ui.graphics.Color(0xFF3F51B5),
+    onPrimary = androidx.compose.ui.graphics.Color.White,
 
-    secondary = Color(0xFF6366F1),
-    onSecondary = Color.White,
+    primaryContainer = androidx.compose.ui.graphics.Color(0xFFDDE2FF),
+    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFF00145C),
 
-    background = Color(0xFFF8F9FC),
-    onBackground = Color(0xFF18181B),
+    secondary = androidx.compose.ui.graphics.Color(0xFF5B5D72),
+    onSecondary = androidx.compose.ui.graphics.Color.White,
 
-    surface = Color.White,
-    onSurface = Color(0xFF18181B),
+    secondaryContainer = androidx.compose.ui.graphics.Color(0xFFE1E1F9),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF181A2C),
 
-    surfaceVariant = Color(0xFFE5E7EB),
-    onSurfaceVariant = Color(0xFF52525B)
+    background = androidx.compose.ui.graphics.Color(0xFFF9F9FF),
+    onBackground = androidx.compose.ui.graphics.Color(0xFF1A1B20),
+
+    surface = androidx.compose.ui.graphics.Color(0xFFF9F9FF),
+    onSurface = androidx.compose.ui.graphics.Color(0xFF1A1B20),
+
+    surfaceVariant = androidx.compose.ui.graphics.Color(0xFFE3E2EC),
+    onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFF46464F),
+
+    outline = androidx.compose.ui.graphics.Color(0xFF777680)
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFA5B4FC),
-    onPrimary = Color(0xFF1E1B4B),
+/*
+ * =========================================================
+ * DARK COLOR SCHEME
+ * =========================================================
+ */
 
-    primaryContainer = Color(0xFF3730A3),
-    onPrimaryContainer = Color(0xFFE0E7FF),
+private val DarkColors = darkColorScheme(
+    primary = androidx.compose.ui.graphics.Color(0xFFBBC3FF),
+    onPrimary = androidx.compose.ui.graphics.Color(0xFF162778),
 
-    secondary = Color(0xFFC7D2FE),
-    onSecondary = Color(0xFF1E1B4B),
+    primaryContainer = androidx.compose.ui.graphics.Color(0xFF293A8A),
+    onPrimaryContainer = androidx.compose.ui.graphics.Color(0xFFDDE2FF),
 
-    background = Color(0xFF09090B),
-    onBackground = Color(0xFFF4F4F5),
+    secondary = androidx.compose.ui.graphics.Color(0xFFC5C5DD),
+    onSecondary = androidx.compose.ui.graphics.Color(0xFF2D2F42),
 
-    surface = Color(0xFF18181B),
-    onSurface = Color(0xFFF4F4F5),
+    secondaryContainer = androidx.compose.ui.graphics.Color(0xFF444559),
+    onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFE1E1F9),
 
-    surfaceVariant = Color(0xFF27272A),
-    onSurfaceVariant = Color(0xFFA1A1AA)
+    background = androidx.compose.ui.graphics.Color(0xFF111318),
+    onBackground = androidx.compose.ui.graphics.Color(0xFFE3E2E9),
+
+    surface = androidx.compose.ui.graphics.Color(0xFF111318),
+    onSurface = androidx.compose.ui.graphics.Color(0xFFE3E2E9),
+
+    surfaceVariant = androidx.compose.ui.graphics.Color(0xFF45464F),
+    onSurfaceVariant = androidx.compose.ui.graphics.Color(0xFFC6C6D0),
+
+    outline = androidx.compose.ui.graphics.Color(0xFF90909A)
 )
+
+/*
+ * =========================================================
+ * WORLD CLOCK THEME
+ * =========================================================
+ */
 
 @Composable
 fun WorldClockTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) {
-        DarkColorScheme
-    } else {
-        LightColorScheme
-    }
+
+    val colors =
+
+        if (darkTheme) {
+            DarkColors
+        } else {
+            LightColors
+        }
+
 
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography(),
+        colorScheme = colors,
+        typography = Typography,
         content = content
     )
 }
