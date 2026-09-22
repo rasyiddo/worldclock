@@ -13,14 +13,8 @@ interface FavoriteCityDao {
     fun getAllFavorites(): Flow<List<FavoriteCity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertFavorite(
-        city: FavoriteCity
-    )
+    suspend fun insertFavorite(city: FavoriteCity)
 
-    @Query(
-        "DELETE FROM favorite_cities WHERE timezone = :timezone"
-    )
-    suspend fun deleteFavorite(
-        timezone: String
-    )
+    @Query("DELETE FROM favorite_cities WHERE id = :id")
+    suspend fun deleteFavorite(id: String)
 }
