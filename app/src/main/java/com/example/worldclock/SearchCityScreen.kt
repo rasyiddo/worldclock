@@ -31,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,13 +59,19 @@ fun SearchCityScreen(
         mutableStateOf(false)
     }
 
+    var isLoadingTimezone by remember {
+        mutableStateOf(false)
+    }
+
     var errorMessage by remember {
         mutableStateOf<String?>(null)
     }
 
+    val scope = rememberCoroutineScope()
+
     /*
      * =====================================================
-     * SEARCH API
+     * SEARCH CITY
      * =====================================================
      */
 
@@ -144,12 +152,6 @@ fun SearchCityScreen(
                 modifier = Modifier.height(8.dp)
             )
 
-            /*
-             * =================================================
-             * SEARCH BAR
-             * =================================================
-             */
-
             OutlinedTextField(
                 value = searchText,
                 onValueChange = {
@@ -174,7 +176,7 @@ fun SearchCityScreen(
 
             /*
              * =================================================
-             * LOADING
+             * SEARCH LOADING
              * =================================================
              */
 
@@ -188,6 +190,39 @@ fun SearchCityScreen(
                 ) {
 
                     CircularProgressIndicator()
+                }
+            }
+
+            /*
+             * =================================================
+             * TIMEZONE LOADING
+             * =================================================
+             */
+
+            else if (isLoadingTimezone) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    Column(
+                        horizontalAlignment =
+                            Alignment.CenterHorizontally
+                    ) {
+
+                        CircularProgressIndicator()
+
+                        Spacer(
+                            modifier = Modifier.height(12.dp)
+                        )
+
+                        Text(
+                            text = "Getting timezone..."
+                        )
+                    }
                 }
             }
 
@@ -243,7 +278,8 @@ fun SearchCityScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement =
+                    Arrangement.spacedBy(10.dp)
             ) {
 
                 items(
@@ -258,26 +294,74 @@ fun SearchCityScreen(
                         onClick = {
 
                             /*
-                             * TEMPORARY TIMEZONE
-                             *
-                             * Nanti kita ganti dengan
-                             * timezoneJSON berdasarkan
-                             * latitude + longitude.
+                             * IMPORTANT:
+                             * Get timezone from GeoNames
+                             * using latitude + longitude.
                              */
 
-                            onCitySelected(
-                                ClockCity(
-                                    city = result.name,
-                                    country = result.countryName,
-                                    flag = countryCodeToFlag(
-                                        result.countryCode
-                                    ),
-                                    timezone =
-                                        java.util.TimeZone
-                                            .getDefault()
-                                            .id
-                                )
-                            )
+                            scope.launch {
+
+                                isLoadingTimezone = true
+                                errorMessage = null
+
+                                try {
+
+                                    val latitude =
+                                        result.lat.toDouble()
+
+                                    val longitude =
+                                        result.lng.toDouble()
+
+                                    val timezoneResponse =
+                                        GeoNamesService.api
+                                            .getTimezone(
+                                                latitude = latitude,
+                                                longitude = longitude,
+                                                username =
+                                                    GeoNamesConfig
+                                                        .USERNAME
+                                            )
+
+                                    val timezoneId =
+                                        timezoneResponse
+                                            .timezoneId
+
+                                    if (
+                                        timezoneId.isBlank()
+                                    ) {
+
+                                        throw IllegalStateException(
+                                            "Timezone not found"
+                                        )
+                                    }
+
+                                    val city =
+                                        ClockCity(
+                                            city = result.name,
+                                            country =
+                                                result.countryName,
+                                            flag =
+                                                countryCodeToFlag(
+                                                    result.countryCode
+                                                ),
+                                            timezone =
+                                                timezoneId
+                                        )
+
+                                    onCitySelected(city)
+
+                                } catch (e: Exception) {
+
+                                    errorMessage =
+                                        "Failed to get timezone: " +
+                                                "${e.javaClass.simpleName}: " +
+                                                "${e.message}"
+
+                                } finally {
+
+                                    isLoadingTimezone = false
+                                }
+                            }
                         }
                     )
                 }
@@ -313,7 +397,8 @@ fun GeoNameSearchItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment =
+                Alignment.CenterVertically
         ) {
 
             Text(
@@ -341,24 +426,27 @@ fun GeoNameSearchItem(
                 Text(
                     text = result.countryName,
                     fontSize = 14.sp,
-                    color = androidx.compose.material3.MaterialTheme
-                        .colorScheme
-                        .onSurfaceVariant
+                    color =
+                        androidx.compose.material3.MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant
                 )
 
                 if (result.population > 0) {
 
                     Text(
-                        text = "Population: ${
-                            String.format(
-                                "%,d",
-                                result.population
-                            )
-                        }",
+                        text =
+                            "Population: ${
+                                String.format(
+                                    "%,d",
+                                    result.population
+                                )
+                            }",
                         fontSize = 12.sp,
-                        color = androidx.compose.material3.MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant
+                        color =
+                            androidx.compose.material3.MaterialTheme
+                                .colorScheme
+                                .onSurfaceVariant
                     )
                 }
             }
