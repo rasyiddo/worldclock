@@ -13,14 +13,8 @@ interface SavedCityDao {
     fun getAllSavedCities(): Flow<List<SavedCity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSavedCity(
-        city: SavedCity
-    )
+    suspend fun insertSavedCity(city: SavedCity)
 
-    @Query(
-        "DELETE FROM saved_cities WHERE timezone = :timezone"
-    )
-    suspend fun deleteSavedCity(
-        timezone: String
-    )
+    @Query("DELETE FROM saved_cities WHERE id = :id")
+    suspend fun deleteSavedCity(id: String)
 }
