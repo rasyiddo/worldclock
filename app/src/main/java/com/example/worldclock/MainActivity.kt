@@ -33,7 +33,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -58,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 
 import androidx.compose.ui.Alignment
@@ -134,14 +137,59 @@ class MainActivity : ComponentActivity() {
 
         setContent {
 
-            WorldClockTheme {
+            /*
+             * =================================================
+             * DARK MODE STATE
+             * =================================================
+             *
+             * rememberSaveable menjaga state saat Activity
+             * melakukan recreation.
+             *
+             * false = Light Mode
+             * true  = Dark Mode
+             */
+
+            var isDarkMode by rememberSaveable {
+
+                mutableStateOf(false)
+            }
+
+
+            /*
+             * =================================================
+             * THEME
+             * =================================================
+             */
+
+            WorldClockTheme(
+
+                darkTheme =
+                    isDarkMode
+
+            ) {
 
                 WorldClockApp(
-                    locationName = locationName,
-                    countryName = countryName,
-                    timezone = detectedTimezone,
+
+                    locationName =
+                        locationName,
+
+                    countryName =
+                        countryName,
+
+                    timezone =
+                        detectedTimezone,
+
+                    isDarkMode =
+                        isDarkMode,
+
+                    onToggleDarkMode = {
+
+                        isDarkMode =
+                            !isDarkMode
+                    },
 
                     onRefreshLocation = {
+
                         requestLocationPermission()
                     }
                 )
@@ -157,7 +205,9 @@ class MainActivity : ComponentActivity() {
         locationPermissionLauncher.launch(
 
             arrayOf(
+
                 Manifest.permission.ACCESS_FINE_LOCATION,
+
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
         )
@@ -190,6 +240,7 @@ class MainActivity : ComponentActivity() {
             !hasFineLocation &&
             !hasCoarseLocation
         ) {
+
             return
         }
 
@@ -233,7 +284,9 @@ class MainActivity : ComponentActivity() {
         }
 
 
-        if (location != null) {
+        if (
+            location != null
+        ) {
 
             getAddressFromLocation(
                 location
@@ -268,7 +321,9 @@ class MainActivity : ComponentActivity() {
                 ) ?: emptyList()
 
 
-            if (addresses.isNotEmpty()) {
+            if (
+                addresses.isNotEmpty()
+            ) {
 
                 val address =
                     addresses[0]
@@ -309,24 +364,47 @@ class MainActivity : ComponentActivity() {
 val defaultWorldCities = listOf(
 
     ClockCity(
-        city = "Tokyo",
-        country = "Japan",
-        flag = "🇯🇵",
-        timezone = "Asia/Tokyo"
+        city =
+            "Tokyo",
+
+        country =
+            "Japan",
+
+        flag =
+            "🇯🇵",
+
+        timezone =
+            "Asia/Tokyo"
     ),
 
-    ClockCity(
-        city = "London",
-        country = "United Kingdom",
-        flag = "🇬🇧",
-        timezone = "Europe/London"
-    ),
 
     ClockCity(
-        city = "New York",
-        country = "United States",
-        flag = "🇺🇸",
-        timezone = "America/New_York"
+        city =
+            "London",
+
+        country =
+            "United Kingdom",
+
+        flag =
+            "🇬🇧",
+
+        timezone =
+            "Europe/London"
+    ),
+
+
+    ClockCity(
+        city =
+            "New York",
+
+        country =
+            "United States",
+
+        flag =
+            "🇺🇸",
+
+        timezone =
+            "America/New_York"
     )
 )
 
@@ -339,9 +417,17 @@ val defaultWorldCities = listOf(
 
 @Composable
 fun WorldClockApp(
+
     locationName: String,
+
     countryName: String,
+
     timezone: String,
+
+    isDarkMode: Boolean,
+
+    onToggleDarkMode: () -> Unit,
+
     onRefreshLocation: () -> Unit
 ) {
 
@@ -349,17 +435,28 @@ fun WorldClockApp(
         androidx.compose.ui.platform.LocalContext.current
 
 
+    /*
+     * =====================================================
+     * ROOM DATABASE
+     * =====================================================
+     */
+
     val database =
         remember {
-            AppDatabase.getInstance(context)
+
+            AppDatabase.getInstance(
+                context
+            )
         }
 
 
     val favoriteDao =
         database.favoriteCityDao()
 
+
     val savedCityDao =
         database.savedCityDao()
+
 
     val scope =
         rememberCoroutineScope()
@@ -400,24 +497,26 @@ fun WorldClockApp(
             .collect { favorites ->
 
                 /*
-                 * ID favorite.
-                 *
-                 * Digunakan untuk menentukan
-                 * apakah icon ⭐ aktif atau tidak.
+                 * Simpan ID favorite.
                  */
+
                 favoriteIds =
                     favorites
                         .map {
+
                             it.id
+
                         }
                         .toSet()
 
 
                 /*
-                 * Data lengkap favorite.
+                 * Simpan data lengkap favorite.
                  *
-                 * Favorites berdiri sendiri dari All Cities.
+                 * Favorites berdiri sendiri
+                 * dari All Cities.
                  */
+
                 favoriteCityList =
                     favorites.map { favorite ->
 
@@ -445,7 +544,7 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SEARCH SCREEN
+     * SEARCH SCREEN STATE
      * =====================================================
      */
 
@@ -469,6 +568,12 @@ fun WorldClockApp(
     }
 
 
+    /*
+     * =====================================================
+     * LOAD ALL CITIES
+     * =====================================================
+     */
+
     LaunchedEffect(Unit) {
 
         savedCityDao
@@ -480,8 +585,9 @@ fun WorldClockApp(
                 ) {
 
                     /*
-                     * Kalau belum ada kota,
-                     * masukkan default cities.
+                     * Database masih kosong.
+                     *
+                     * Masukkan default cities.
                      */
 
                     defaultWorldCities.forEach { city ->
@@ -538,11 +644,13 @@ fun WorldClockApp(
 
     /*
      * =====================================================
-     * SCREEN SWITCH
+     * SEARCH SCREEN
      * =====================================================
      */
 
-    if (showSearchScreen) {
+    if (
+        showSearchScreen
+    ) {
 
         SearchCityScreen(
 
@@ -556,10 +664,10 @@ fun WorldClockApp(
             onCitySelected = { city ->
 
                 /*
-                 * Gunakan ID kota.
+                 * Gunakan ID sebagai identitas kota.
                  *
-                 * Jadi dua kota berbeda dengan
-                 * timezone sama tetap bisa masuk.
+                 * Jadi kota berbeda dengan timezone
+                 * yang sama tetap bisa masuk.
                  */
 
                 val alreadyExists =
@@ -570,7 +678,9 @@ fun WorldClockApp(
                     }
 
 
-                if (!alreadyExists) {
+                if (
+                    !alreadyExists
+                ) {
 
                     scope.launch {
 
@@ -607,7 +717,7 @@ fun WorldClockApp(
 
         /*
          * =================================================
-         * HOME
+         * HOME SCREEN
          * =================================================
          */
 
@@ -625,17 +735,27 @@ fun WorldClockApp(
             cities =
                 selectedCities,
 
+
+            /*
+             * Favorite IDs.
+             */
+
             favoriteCities =
                 favoriteIds,
+
+
+            /*
+             * Favorite city list.
+             */
 
             favoriteCityList =
                 favoriteCityList,
 
 
             /*
-             * =============================================
+             * =================================================
              * FAVORITE
-             * =============================================
+             * =================================================
              */
 
             onToggleFavorite = { city ->
@@ -648,22 +768,25 @@ fun WorldClockApp(
 
                 scope.launch {
 
-                    if (isFavorite) {
+                    if (
+                        isFavorite
+                    ) {
 
                         /*
-                         * HANYA hapus favorite.
+                         * Hanya hapus FAVORITE.
                          *
                          * All Cities tidak disentuh.
                          */
 
                         favoriteDao.deleteFavorite(
+
                             city.id
                         )
 
                     } else {
 
                         /*
-                         * Tambahkan favorite.
+                         * Tambahkan FAVORITE.
                          */
 
                         favoriteDao.insertFavorite(
@@ -692,9 +815,9 @@ fun WorldClockApp(
 
 
             /*
-             * =============================================
+             * =================================================
              * REFRESH LOCATION
-             * =============================================
+             * =================================================
              */
 
             onRefreshLocation = {
@@ -704,9 +827,9 @@ fun WorldClockApp(
 
 
             /*
-             * =============================================
+             * =================================================
              * ADD CITY
-             * =============================================
+             * =================================================
              */
 
             onAddCity = {
@@ -717,17 +840,15 @@ fun WorldClockApp(
 
 
             /*
-             * =============================================
-             * DELETE CITY FROM ALL
-             * =============================================
+             * =================================================
+             * DELETE CITY
+             * =================================================
              *
              * PENTING:
              *
-             * DI SINI KITA TIDAK BOLEH
-             * memanggil favoriteDao.deleteFavorite()
+             * Hanya menghapus dari All Cities.
              *
-             * Jadi ketika kota dihapus dari
-             * All Cities, favorite tetap aman.
+             * Favorite tetap aman.
              */
 
             onDeleteCity = { city ->
@@ -735,10 +856,24 @@ fun WorldClockApp(
                 scope.launch {
 
                     savedCityDao.deleteSavedCity(
+
                         city.id
                     )
                 }
-            }
+            },
+
+
+            /*
+             * =================================================
+             * DARK MODE
+             * =================================================
+             */
+
+            isDarkMode =
+                isDarkMode,
+
+            onToggleDarkMode =
+                onToggleDarkMode
         )
     }
 }
@@ -753,20 +888,42 @@ fun WorldClockApp(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorldClockHomeScreen(
+
     locationName: String,
+
     countryName: String,
+
     timezone: String,
+
     cities: List<ClockCity>,
+
     favoriteCities: Set<String>,
+
     favoriteCityList: List<ClockCity>,
-    onToggleFavorite: (ClockCity) -> Unit,
-    onRefreshLocation: () -> Unit,
-    onAddCity: () -> Unit,
-    onDeleteCity: (ClockCity) -> Unit
+
+    onToggleFavorite:
+        (ClockCity) -> Unit,
+
+    onRefreshLocation:
+        () -> Unit,
+
+    onAddCity:
+        () -> Unit,
+
+    onDeleteCity:
+        (ClockCity) -> Unit,
+
+    isDarkMode:
+    Boolean,
+
+    onToggleDarkMode:
+        () -> Unit
 ) {
 
     /*
-     * Waktu sekarang.
+     * =====================================================
+     * CURRENT TIME
+     * =====================================================
      */
 
     var currentTimeMillis by remember {
@@ -778,8 +935,12 @@ fun WorldClockHomeScreen(
 
 
     /*
+     * =====================================================
+     * CLOCK MODE
+     * =====================================================
+     *
      * false = Digital
-     * true = Analog
+     * true  = Analog
      */
 
     var isAnalog by remember {
@@ -789,6 +950,10 @@ fun WorldClockHomeScreen(
 
 
     /*
+     * =====================================================
+     * TAB
+     * =====================================================
+     *
      * 0 = All Cities
      * 1 = Favorites
      */
@@ -800,7 +965,9 @@ fun WorldClockHomeScreen(
 
 
     /*
-     * Update setiap 1 detik.
+     * =====================================================
+     * REAL TIME UPDATE
+     * =====================================================
      */
 
     LaunchedEffect(Unit) {
@@ -810,7 +977,9 @@ fun WorldClockHomeScreen(
             currentTimeMillis =
                 System.currentTimeMillis()
 
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(
+                1000
+            )
         }
     }
 
@@ -821,13 +990,12 @@ fun WorldClockHomeScreen(
      * =====================================================
      *
      * All Cities:
-     *     berasal dari saved cities
+     *     selectedCities
      *
      * Favorites:
-     *     berasal langsung dari favorite database
+     *     favoriteCityList
      *
-     * Jadi Favorite TIDAK bergantung
-     * pada All Cities.
+     * Dua data ini TERPISAH.
      */
 
     val visibleCities =
@@ -846,11 +1014,17 @@ fun WorldClockHomeScreen(
 
     /*
      * =====================================================
-     * SCAFFOLD
+     * MAIN SCAFFOLD
      * =====================================================
      */
 
     Scaffold(
+
+        /*
+         * =================================================
+         * TOP BAR
+         * =================================================
+         */
 
         topBar = {
 
@@ -861,12 +1035,17 @@ fun WorldClockHomeScreen(
                     Column {
 
                         Text(
-                            text = "World Clock",
+
+                            text =
+                                "World Clock",
+
                             fontWeight =
                                 FontWeight.Bold
                         )
 
+
                         Text(
+
                             text =
                                 "Your time around the world",
 
@@ -883,6 +1062,61 @@ fun WorldClockHomeScreen(
 
 
                 actions = {
+
+                    /*
+                     * =========================================
+                     * DARK / LIGHT MODE BUTTON
+                     * =========================================
+                     */
+
+                    IconButton(
+
+                        onClick =
+                            onToggleDarkMode
+
+                    ) {
+
+                        Icon(
+
+                            imageVector =
+
+                                if (
+                                    isDarkMode
+                                ) {
+
+                                    Icons.Default.LightMode
+
+                                } else {
+
+                                    Icons.Default.DarkMode
+                                },
+
+                            contentDescription =
+
+                                if (
+                                    isDarkMode
+                                ) {
+
+                                    "Switch to light mode"
+
+                                } else {
+
+                                    "Switch to dark mode"
+                                },
+
+                            tint =
+                                MaterialTheme
+                                    .colorScheme
+                                    .onSurfaceVariant
+                        )
+                    }
+
+
+                    /*
+                     * =========================================
+                     * REFRESH LOCATION
+                     * =========================================
+                     */
 
                     IconButton(
 
@@ -910,6 +1144,12 @@ fun WorldClockHomeScreen(
         },
 
 
+        /*
+         * =================================================
+         * ADD CITY
+         * =================================================
+         */
+
         floatingActionButton = {
 
             FloatingActionButton(
@@ -932,12 +1172,20 @@ fun WorldClockHomeScreen(
     ) { innerPadding ->
 
 
+        /*
+         * =================================================
+         * CITY LIST
+         * =================================================
+         */
+
         LazyColumn(
 
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(
+                        innerPadding
+                    )
                     .padding(
                         horizontal = 16.dp
                     ),
@@ -958,8 +1206,11 @@ fun WorldClockHomeScreen(
             item {
 
                 Spacer(
+
                     modifier =
-                        Modifier.height(4.dp)
+                        Modifier.height(
+                            4.dp
+                        )
                 )
 
 
@@ -1000,7 +1251,6 @@ fun WorldClockHomeScreen(
                         Alignment.CenterVertically
                 ) {
 
-
                     Text(
 
                         text =
@@ -1015,27 +1265,18 @@ fun WorldClockHomeScreen(
 
 
                     /*
-                     * =========================================
-                     * CLOCK MODE SELECTOR
-                     * =========================================
-                     *
-                     * Sebelumnya:
-                     *
-                     * Digital = LightMode
-                     * Analog  = DarkMode
-                     *
-                     * Itu salah secara visual.
-                     *
-                     * Sekarang:
-                     *
-                     * Digital = "digital"
-                     * Analog  = "analog"
+                     * =================================================
+                     * DIGITAL / ANALOG SELECTOR
+                     * =================================================
                      */
 
                     Row {
 
+
                         /*
+                         * =============================================
                          * DIGITAL
+                         * =============================================
                          */
 
                         IconButton(
@@ -1051,7 +1292,7 @@ fun WorldClockHomeScreen(
                             Text(
 
                                 text =
-                                    "12:12",
+                                    "12:34",
 
                                 fontSize =
                                     13.sp,
@@ -1061,7 +1302,9 @@ fun WorldClockHomeScreen(
 
                                 color =
 
-                                    if (!isAnalog) {
+                                    if (
+                                        !isAnalog
+                                    ) {
 
                                         MaterialTheme
                                             .colorScheme
@@ -1078,7 +1321,9 @@ fun WorldClockHomeScreen(
 
 
                         /*
+                         * =============================================
                          * ANALOG
+                         * =============================================
                          */
 
                         IconButton(
@@ -1101,7 +1346,9 @@ fun WorldClockHomeScreen(
 
                                 tint =
 
-                                    if (isAnalog) {
+                                    if (
+                                        isAnalog
+                                    ) {
 
                                         MaterialTheme
                                             .colorScheme
@@ -1122,7 +1369,7 @@ fun WorldClockHomeScreen(
 
             /*
              * =================================================
-             * ALL / FAVORITES
+             * ALL CITIES / FAVORITES
              * =================================================
              */
 
@@ -1132,7 +1379,12 @@ fun WorldClockHomeScreen(
 
                     selectedTabIndex =
                         selectedTab
+
                 ) {
+
+                    /*
+                     * ALL CITIES
+                     */
 
                     Tab(
 
@@ -1154,6 +1406,10 @@ fun WorldClockHomeScreen(
                         }
                     )
 
+
+                    /*
+                     * FAVORITES
+                     */
 
                     Tab(
 
@@ -1180,7 +1436,7 @@ fun WorldClockHomeScreen(
 
             /*
              * =================================================
-             * CITY LIST
+             * EMPTY STATE
              * =================================================
              */
 
@@ -1195,19 +1451,28 @@ fun WorldClockHomeScreen(
 
             } else {
 
+                /*
+                 * =================================================
+                 * CITY CARDS
+                 * =================================================
+                 */
+
                 items(
 
                     items =
                         visibleCities,
 
                     /*
-                     * Jangan timezone.
+                     * IMPORTANT:
                      *
-                     * Gunakan ID karena dua kota
-                     * bisa mempunyai timezone sama.
+                     * Jangan gunakan timezone sebagai key.
+                     *
+                     * ID lebih aman karena dua kota
+                     * bisa memiliki timezone sama.
                      */
 
                     key = {
+
                         it.id
                     }
 
@@ -1230,10 +1495,9 @@ fun WorldClockHomeScreen(
                                 city.id
                             ),
 
-
                         /*
-                         * Favorite bisa diubah
-                         * dari All maupun Favorites.
+                         * Favorite tetap tersedia
+                         * di All Cities dan Favorites.
                          */
 
                         onToggleFavorite = {
@@ -1243,14 +1507,9 @@ fun WorldClockHomeScreen(
                             )
                         },
 
-
                         /*
-                         * DELETE hanya ditampilkan
+                         * Delete hanya muncul
                          * di All Cities.
-                         *
-                         * Jadi user tidak bingung:
-                         * Favorites bukan tempat
-                         * untuk menghapus city.
                          */
 
                         showDelete =
@@ -1276,8 +1535,11 @@ fun WorldClockHomeScreen(
             item {
 
                 Spacer(
+
                     modifier =
-                        Modifier.height(80.dp)
+                        Modifier.height(
+                            80.dp
+                        )
                 )
             }
         }
@@ -1293,22 +1555,30 @@ fun WorldClockHomeScreen(
 
 @Composable
 fun LocalTimeCard(
+
     locationName: String,
+
     countryName: String,
+
     timezone: String,
+
     currentTimeMillis: Long
 ) {
 
     val time =
         getCurrentTime(
+
             currentTimeMillis,
+
             timezone
         )
 
 
     val offset =
         getGmtOffset(
+
             currentTimeMillis,
+
             timezone
         )
 
@@ -1319,7 +1589,9 @@ fun LocalTimeCard(
             Modifier.fillMaxWidth(),
 
         shape =
-            RoundedCornerShape(24.dp),
+            RoundedCornerShape(
+                24.dp
+            ),
 
         colors =
             CardDefaults.cardColors(
@@ -1334,8 +1606,15 @@ fun LocalTimeCard(
         Column(
 
             modifier =
-                Modifier.padding(20.dp)
+                Modifier.padding(
+                    20.dp
+                )
         ) {
+
+
+            /*
+             * LOCATION HEADER
+             */
 
             Row(
 
@@ -1356,7 +1635,9 @@ fun LocalTimeCard(
                 Spacer(
 
                     modifier =
-                        Modifier.width(8.dp)
+                        Modifier.width(
+                            8.dp
+                        )
                 )
 
 
@@ -1374,9 +1655,15 @@ fun LocalTimeCard(
             Spacer(
 
                 modifier =
-                    Modifier.height(12.dp)
+                    Modifier.height(
+                        12.dp
+                    )
             )
 
+
+            /*
+             * LOCATION NAME
+             */
 
             Text(
 
@@ -1390,6 +1677,10 @@ fun LocalTimeCard(
                     FontWeight.Bold
             )
 
+
+            /*
+             * COUNTRY
+             */
 
             Text(
 
@@ -1406,9 +1697,15 @@ fun LocalTimeCard(
             Spacer(
 
                 modifier =
-                    Modifier.height(12.dp)
+                    Modifier.height(
+                        12.dp
+                    )
             )
 
+
+            /*
+             * CURRENT TIME
+             */
 
             Text(
 
@@ -1422,6 +1719,10 @@ fun LocalTimeCard(
                     FontWeight.Bold
             )
 
+
+            /*
+             * GMT
+             */
 
             Text(
 
@@ -1446,32 +1747,45 @@ fun LocalTimeCard(
 
 @Composable
 fun CityClockCard(
+
     city: ClockCity,
+
     currentTimeMillis: Long,
+
     isAnalog: Boolean,
+
     isFavorite: Boolean,
+
     showDelete: Boolean,
+
     onToggleFavorite: () -> Unit,
+
     onDeleteCity: () -> Unit
 ) {
 
     val time =
         getCurrentTime(
+
             currentTimeMillis,
+
             city.timezone
         )
 
 
     val offset =
         getGmtOffset(
+
             currentTimeMillis,
+
             city.timezone
         )
 
 
     val day =
         isDayTime(
+
             currentTimeMillis,
+
             city.timezone
         )
 
@@ -1482,13 +1796,17 @@ fun CityClockCard(
             Modifier.fillMaxWidth(),
 
         shape =
-            RoundedCornerShape(22.dp)
+            RoundedCornerShape(
+                22.dp
+            )
     ) {
 
         Column(
 
             modifier =
-                Modifier.padding(16.dp)
+                Modifier.padding(
+                    16.dp
+                )
         ) {
 
 
@@ -1525,18 +1843,22 @@ fun CityClockCard(
                 Spacer(
 
                     modifier =
-                        Modifier.width(12.dp)
+                        Modifier.width(
+                            12.dp
+                        )
                 )
 
 
                 /*
-                 * CITY NAME
+                 * CITY NAME + COUNTRY
                  */
 
                 Column(
 
                     modifier =
-                        Modifier.weight(1f)
+                        Modifier.weight(
+                            1f
+                        )
                 ) {
 
                     Text(
@@ -1570,7 +1892,7 @@ fun CityClockCard(
 
                 /*
                  * =================================================
-                 * FAVORITE
+                 * FAVORITE BUTTON
                  * =================================================
                  */
 
@@ -1585,7 +1907,9 @@ fun CityClockCard(
 
                         imageVector =
 
-                            if (isFavorite) {
+                            if (
+                                isFavorite
+                            ) {
 
                                 Icons.Default.Star
 
@@ -1596,7 +1920,9 @@ fun CityClockCard(
 
                         contentDescription =
 
-                            if (isFavorite) {
+                            if (
+                                isFavorite
+                            ) {
 
                                 "Remove from favorites"
 
@@ -1607,7 +1933,9 @@ fun CityClockCard(
 
                         tint =
 
-                            if (isFavorite) {
+                            if (
+                                isFavorite
+                            ) {
 
                                 MaterialTheme
                                     .colorScheme
@@ -1625,13 +1953,15 @@ fun CityClockCard(
 
                 /*
                  * =================================================
-                 * DELETE
+                 * DELETE BUTTON
                  * =================================================
                  *
-                 * Hanya muncul di All Cities.
+                 * Hanya tampil di All Cities.
                  */
 
-                if (showDelete) {
+                if (
+                    showDelete
+                ) {
 
                     IconButton(
 
@@ -1661,7 +1991,9 @@ fun CityClockCard(
             Spacer(
 
                 modifier =
-                    Modifier.height(12.dp)
+                    Modifier.height(
+                        12.dp
+                    )
             )
 
 
@@ -1671,7 +2003,9 @@ fun CityClockCard(
              * =================================================
              */
 
-            if (isAnalog) {
+            if (
+                isAnalog
+            ) {
 
                 Box(
 
@@ -1696,7 +2030,9 @@ fun CityClockCard(
                 Spacer(
 
                     modifier =
-                        Modifier.height(10.dp)
+                        Modifier.height(
+                            10.dp
+                        )
                 )
 
 
@@ -1717,6 +2053,10 @@ fun CityClockCard(
 
             } else {
 
+                /*
+                 * DIGITAL CLOCK
+                 */
+
                 Text(
 
                     text =
@@ -1734,7 +2074,9 @@ fun CityClockCard(
             Spacer(
 
                 modifier =
-                    Modifier.height(4.dp)
+                    Modifier.height(
+                        4.dp
+                    )
             )
 
 
@@ -1754,7 +2096,9 @@ fun CityClockCard(
 
                     text =
 
-                        if (day) {
+                        if (
+                            day
+                        ) {
 
                             "☀️ Day"
 
@@ -1771,7 +2115,9 @@ fun CityClockCard(
                 Spacer(
 
                     modifier =
-                        Modifier.width(10.dp)
+                        Modifier.width(
+                            10.dp
+                        )
                 )
 
 
@@ -1796,7 +2142,7 @@ fun CityClockCard(
 
 /*
  * =========================================================
- * EMPTY FAVORITES
+ * EMPTY FAVORITES STATE
  * =========================================================
  */
 
@@ -1814,7 +2160,9 @@ fun EmptyFavoritesState() {
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(30.dp),
+                    .padding(
+                        30.dp
+                    ),
 
             horizontalAlignment =
                 Alignment.CenterHorizontally
@@ -1829,7 +2177,9 @@ fun EmptyFavoritesState() {
                     null,
 
                 modifier =
-                    Modifier.size(48.dp),
+                    Modifier.size(
+                        48.dp
+                    ),
 
                 tint =
                     MaterialTheme
@@ -1841,7 +2191,9 @@ fun EmptyFavoritesState() {
             Spacer(
 
                 modifier =
-                    Modifier.height(12.dp)
+                    Modifier.height(
+                        12.dp
+                    )
             )
 
 
@@ -1861,7 +2213,9 @@ fun EmptyFavoritesState() {
             Spacer(
 
                 modifier =
-                    Modifier.height(4.dp)
+                    Modifier.height(
+                        4.dp
+                    )
             )
 
 
