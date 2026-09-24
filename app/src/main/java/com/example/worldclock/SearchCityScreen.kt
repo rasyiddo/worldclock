@@ -2,30 +2,33 @@ package com.example.worldclock
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,13 +36,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,334 +53,621 @@ fun SearchCityScreen(
     onBack: () -> Unit,
     onCitySelected: (ClockCity) -> Unit
 ) {
+
+    /*
+     * =====================================================
+     * SEARCH TEXT
+     * =====================================================
+     */
     var searchText by remember {
         mutableStateOf("")
     }
 
+
+    /*
+     * =====================================================
+     * SEARCH RESULTS
+     * =====================================================
+     */
     var searchResults by remember {
         mutableStateOf<List<GeoNameResult>>(emptyList())
     }
 
+
+    /*
+     * =====================================================
+     * LOADING SEARCH
+     * =====================================================
+     */
     var isLoading by remember {
         mutableStateOf(false)
     }
 
+
+    /*
+     * =====================================================
+     * LOADING TIMEZONE
+     * =====================================================
+     */
     var isLoadingTimezone by remember {
         mutableStateOf(false)
     }
 
+
+    /*
+     * =====================================================
+     * ERROR MESSAGE
+     * =====================================================
+     */
     var errorMessage by remember {
         mutableStateOf<String?>(null)
     }
 
-    val scope = rememberCoroutineScope()
 
     /*
      * =====================================================
-     * SEARCH CITY
+     * COROUTINE
      * =====================================================
      */
+    val scope = rememberCoroutineScope()
 
+
+    /*
+     * =====================================================
+     * SEARCH CITY OTOMATIS
+     * =====================================================
+     *
+     * User mengetik minimal 2 karakter.
+     *
+     * Kita beri delay 500 ms supaya API
+     * tidak dipanggil setiap huruf secara langsung.
+     */
     LaunchedEffect(searchText) {
 
-        val query = searchText.trim()
+        val query =
+            searchText.trim()
 
+
+        /*
+         * Kalau kurang dari 2 karakter,
+         * kosongkan hasil.
+         */
         if (query.length < 2) {
-            searchResults = emptyList()
-            errorMessage = null
-            isLoading = false
+
+            searchResults =
+                emptyList()
+
+            errorMessage =
+                null
+
+            isLoading =
+                false
+
             return@LaunchedEffect
         }
 
+
+        /*
+         * Tunggu sebentar
+         * sebelum memanggil API.
+         */
         delay(500)
 
-        isLoading = true
-        errorMessage = null
+
+        isLoading =
+            true
+
+        errorMessage =
+            null
+
 
         try {
 
-            val response = GeoNamesService.api.searchCities(
-                query = query,
-                maxRows = 20,
-                featureClass = "P",
-                orderBy = "population",
-                style = "FULL",
-                username = GeoNamesConfig.USERNAME
-            )
+            /*
+             * =================================================
+             * PANGGIL GEONAMES SEARCH API
+             * =================================================
+             */
+            val response =
+                GeoNamesService.api.searchCities(
 
-            searchResults = response.geonames
+                    query = query,
 
+                    maxRows = 20,
+
+                    featureClass = "P",
+
+                    orderBy = "population",
+
+                    style = "FULL",
+
+                    username =
+                        GeoNamesConfig.USERNAME
+                )
+
+
+            /*
+             * Simpan hasil search.
+             */
+            searchResults =
+                response.geonames
+
+
+            /*
+             * Kalau tidak ada hasil.
+             */
             if (response.geonames.isEmpty()) {
-                errorMessage = "No cities found."
+
+                errorMessage =
+                    "No cities found."
             }
 
-        } catch (e: Exception) {
+        } catch (
+            e: Exception
+        ) {
 
-            searchResults = emptyList()
+            searchResults =
+                emptyList()
 
             errorMessage =
                 "${e.javaClass.simpleName}: ${e.message}"
 
         } finally {
 
-            isLoading = false
+            isLoading =
+                false
         }
     }
 
+
+    /*
+     * =====================================================
+     * SCREEN
+     * =====================================================
+     */
     Scaffold(
+
         topBar = {
+
             TopAppBar(
+
                 title = {
-                    Text("Search City")
+                    Text(
+                        text = "Search City"
+                    )
                 },
+
+
                 navigationIcon = {
+
                     IconButton(
                         onClick = onBack
                     ) {
+
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            imageVector =
+                                Icons.Default.ArrowBack,
+
+                            contentDescription =
+                                "Back"
                         )
                     }
                 }
             )
         }
+
     ) { innerPadding ->
 
+
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
         ) {
 
+
+            /*
+             * =================================================
+             * SEARCH BOX
+             * =================================================
+             */
             Spacer(
-                modifier = Modifier.height(8.dp)
+                modifier =
+                    Modifier.height(8.dp)
             )
 
+
             OutlinedTextField(
-                value = searchText,
+
+                value =
+                    searchText,
+
+
                 onValueChange = {
                     searchText = it
                 },
-                modifier = Modifier.fillMaxWidth(),
+
+
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+
                 placeholder = {
-                    Text("Search city or country")
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search"
+                    Text(
+                        text =
+                            "Search city or country"
                     )
                 },
+
+
+                leadingIcon = {
+
+                    Icon(
+                        imageVector =
+                            Icons.Default.Search,
+
+                        contentDescription =
+                            "Search"
+                    )
+                },
+
+
                 singleLine = true
             )
 
+
             Spacer(
-                modifier = Modifier.height(16.dp)
+                modifier =
+                    Modifier.height(16.dp)
             )
+
 
             /*
              * =================================================
              * SEARCH LOADING
              * =================================================
              */
-
             if (isLoading) {
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
+                Column(
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally
                 ) {
 
+                    Spacer(
+                        modifier =
+                            Modifier.height(20.dp)
+                    )
+
+
                     CircularProgressIndicator()
+
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+
+                    Text(
+                        text =
+                            "Searching cities..."
+                    )
                 }
             }
+
 
             /*
              * =================================================
              * TIMEZONE LOADING
              * =================================================
              */
-
             else if (isLoadingTimezone) {
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
+                Column(
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally
                 ) {
 
-                    Column(
-                        horizontalAlignment =
-                            Alignment.CenterHorizontally
-                    ) {
+                    Spacer(
+                        modifier =
+                            Modifier.height(20.dp)
+                    )
 
-                        CircularProgressIndicator()
 
-                        Spacer(
-                            modifier = Modifier.height(12.dp)
-                        )
+                    CircularProgressIndicator()
 
-                        Text(
-                            text = "Getting timezone..."
-                        )
-                    }
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+
+                    Text(
+                        text =
+                            "Getting timezone..."
+                    )
                 }
             }
+
 
             /*
              * =================================================
              * ERROR
              * =================================================
              */
-
             else if (errorMessage != null) {
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor =
-                            androidx.compose.material3.MaterialTheme
-                                .colorScheme
-                                .errorContainer
-                    )
+                Column(
+
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally
                 ) {
 
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
+                    Spacer(
+                        modifier =
+                            Modifier.height(30.dp)
+                    )
 
-                        Text(
-                            text = "Search Error",
-                            fontWeight = FontWeight.Bold
-                        )
 
-                        Spacer(
-                            modifier = Modifier.height(6.dp)
-                        )
+                    Text(
+                        text =
+                            errorMessage ?: "",
 
-                        Text(
-                            text = errorMessage!!
-                        )
-                    }
+                        fontSize =
+                            15.sp,
+
+                        color =
+                            MaterialTheme.colorScheme.error
+                    )
                 }
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
             }
+
 
             /*
              * =================================================
-             * RESULT
+             * EMPTY STATE
              * =================================================
              */
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement =
-                    Arrangement.spacedBy(10.dp)
+            else if (
+                searchText.trim().length < 2
             ) {
 
-                items(
-                    items = searchResults,
-                    key = {
-                        it.geonameId
-                    }
-                ) { result ->
+                Column(
 
-                    GeoNameSearchItem(
-                        result = result,
-                        onClick = {
+                    modifier =
+                        Modifier.fillMaxWidth(),
 
-                            /*
-                             * IMPORTANT:
-                             * Get timezone from GeoNames
-                             * using latitude + longitude.
-                             */
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally
+                ) {
 
-                            scope.launch {
+                    Spacer(
+                        modifier =
+                            Modifier.height(30.dp)
+                    )
 
-                                isLoadingTimezone = true
-                                errorMessage = null
 
-                                try {
+                    Text(
+                        text =
+                            "Search for a city",
 
-                                    val latitude =
-                                        result.lat.toDouble()
+                        fontSize =
+                            18.sp,
 
-                                    val longitude =
-                                        result.lng.toDouble()
+                        fontWeight =
+                            FontWeight.SemiBold
+                    )
 
-                                    val timezoneResponse =
-                                        GeoNamesService.api
-                                            .getTimezone(
-                                                latitude = latitude,
-                                                longitude = longitude,
-                                                username =
-                                                    GeoNamesConfig
-                                                        .USERNAME
-                                            )
 
-                                    val timezoneId =
-                                        timezoneResponse
-                                            .timezoneId
+                    Spacer(
+                        modifier =
+                            Modifier.height(4.dp)
+                    )
 
-                                    if (
-                                        timezoneId.isBlank()
-                                    ) {
 
-                                        throw IllegalStateException(
-                                            "Timezone not found"
-                                        )
-                                    }
+                    Text(
+                        text =
+                            "Type at least 2 characters",
 
-                                    val city =
-                                        ClockCity(
-                                            city = result.name,
-                                            country =
-                                                result.countryName,
-                                            flag =
-                                                countryCodeToFlag(
-                                                    result.countryCode
-                                                ),
-                                            timezone =
-                                                timezoneId
-                                        )
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .onSurfaceVariant
+                    )
+                }
+            }
 
-                                    onCitySelected(city)
 
-                                } catch (e: Exception) {
+            /*
+             * =================================================
+             * SEARCH RESULT
+             * =================================================
+             */
+            else {
+
+                LazyColumn(
+
+                    modifier =
+                        Modifier.fillMaxSize(),
+
+                    verticalArrangement =
+                        Arrangement.spacedBy(10.dp)
+                ) {
+
+                    items(
+
+                        items =
+                            searchResults,
+
+                        /*
+                         * Gunakan GeoNames ID sebagai key.
+                         *
+                         * BUKAN timezone.
+                         */
+                        key = {
+                            it.geonameId
+                        }
+
+                    ) { result ->
+
+
+                        GeoNameSearchItem(
+
+                            result =
+                                result,
+
+                            onClick = {
+
+                                /*
+                                 * Jalankan coroutine
+                                 * untuk mengambil timezone.
+                                 */
+                                scope.launch {
+
+                                    isLoadingTimezone =
+                                        true
 
                                     errorMessage =
-                                        "Failed to get timezone: " +
-                                                "${e.javaClass.simpleName}: " +
-                                                "${e.message}"
+                                        null
 
-                                } finally {
 
-                                    isLoadingTimezone = false
+                                    try {
+
+                                        /*
+                                         * Ambil latitude.
+                                         */
+                                        val latitude =
+                                            result.lat.toDouble()
+
+
+                                        /*
+                                         * Ambil longitude.
+                                         */
+                                        val longitude =
+                                            result.lng.toDouble()
+
+
+                                        /*
+                                         * =================================================
+                                         * PANGGIL TIMEZONE API
+                                         * =================================================
+                                         */
+                                        val timezoneResponse =
+                                            GeoNamesService.api.getTimezone(
+
+                                                latitude =
+                                                    latitude,
+
+                                                longitude =
+                                                    longitude,
+
+                                                username =
+                                                    GeoNamesConfig.USERNAME
+                                            )
+
+
+                                        /*
+                                         * Ambil timezone ID.
+                                         */
+                                        val timezoneId =
+                                            timezoneResponse.timezoneId
+
+
+                                        /*
+                                         * Pastikan timezone tersedia.
+                                         */
+                                        if (
+                                            timezoneId.isBlank()
+                                        ) {
+
+                                            throw IllegalStateException(
+                                                "Timezone not found"
+                                            )
+                                        }
+
+
+                                        /*
+                                         * =================================================
+                                         * BUAT CLOCK CITY
+                                         * =================================================
+                                         *
+                                         * BAGIAN PALING PENTING:
+                                         *
+                                         * id = geonameId
+                                         *
+                                         * Jadi setiap kota memiliki
+                                         * identitas unik.
+                                         */
+                                        val city =
+                                            ClockCity(
+
+                                                city =
+                                                    result.name,
+
+                                                country =
+                                                    result.countryName,
+
+                                                flag =
+                                                    countryCodeToFlag(
+                                                        result.countryCode
+                                                    ),
+
+                                                timezone =
+                                                    timezoneId,
+
+                                                id =
+                                                    result.geonameId
+                                                        .toString()
+                                            )
+
+
+                                        /*
+                                         * Kirim kota ke MainActivity.
+                                         */
+                                        onCitySelected(
+                                            city
+                                        )
+
+                                    } catch (
+                                        e: Exception
+                                    ) {
+
+                                        errorMessage =
+                                            "Failed to get timezone: " +
+                                                    "${e.javaClass.simpleName}: " +
+                                                    "${e.message}"
+
+                                    } finally {
+
+                                        isLoadingTimezone =
+                                            false
+                                    }
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/*
- * =========================================================
- * SEARCH RESULT ITEM
- * =========================================================
- */
 
 @Composable
 fun GeoNameSearchItem(
@@ -383,73 +676,108 @@ fun GeoNameSearchItem(
 ) {
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                onClick()
-            },
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(
-            16.dp
-        )
+
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onClick()
+                },
+
+
+        shape =
+            MaterialTheme.shapes.large,
+
+
+        colors =
+            CardDefaults.cardColors(
+
+                containerColor =
+                    MaterialTheme
+                        .colorScheme
+                        .surface
+            )
     ) {
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment =
-                Alignment.CenterVertically
+
+        Column(
+
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
         ) {
 
+
+            /*
+             * =================================================
+             * CITY
+             * =================================================
+             */
             Text(
-                text = countryCodeToFlag(
-                    result.countryCode
-                ),
-                fontSize = 30.sp,
-                modifier = Modifier.size(42.dp)
+
+                text =
+                    result.name,
+
+                fontSize =
+                    18.sp,
+
+                fontWeight =
+                    FontWeight.Bold
             )
+
 
             Spacer(
-                modifier = Modifier.size(12.dp)
+                modifier =
+                    Modifier.height(4.dp)
             )
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
 
-                Text(
-                    text = result.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            /*
+             * =================================================
+             * COUNTRY
+             * =================================================
+             */
+            Text(
 
-                Text(
-                    text = result.countryName,
-                    fontSize = 14.sp,
-                    color =
-                        androidx.compose.material3.MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant
-                )
+                text =
+                    "${countryCodeToFlag(result.countryCode)} " +
+                            result.countryName,
 
-                if (result.population > 0) {
+                fontSize =
+                    14.sp,
 
-                    Text(
-                        text =
-                            "Population: ${
-                                String.format(
-                                    "%,d",
-                                    result.population
-                                )
-                            }",
-                        fontSize = 12.sp,
-                        color =
-                            androidx.compose.material3.MaterialTheme
-                                .colorScheme
-                                .onSurfaceVariant
-                    )
-                }
-            }
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onSurfaceVariant
+            )
+
+
+            Spacer(
+                modifier =
+                    Modifier.height(4.dp)
+            )
+
+
+            /*
+             * =================================================
+             * LOCATION INFO
+             * =================================================
+             */
+            Text(
+
+                text =
+                    "Population: ${result.population}",
+
+                fontSize =
+                    12.sp,
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .onSurfaceVariant
+            )
         }
     }
 }
